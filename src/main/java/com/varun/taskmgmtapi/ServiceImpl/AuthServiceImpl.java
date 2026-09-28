@@ -1,11 +1,14 @@
 package com.varun.taskmgmtapi.ServiceImpl;
 
+import com.varun.taskmgmtapi.dto.authDto.LoginRequest;
+import com.varun.taskmgmtapi.dto.authDto.LoginResponse;
 import com.varun.taskmgmtapi.dto.authDto.RegisterRequest;
 import com.varun.taskmgmtapi.dto.authDto.UserResponse;
 import com.varun.taskmgmtapi.exception.ResourceAlreadyExistsException;
 import com.varun.taskmgmtapi.models.Role;
 import com.varun.taskmgmtapi.models.User;
 import com.varun.taskmgmtapi.repository.UserRepo;
+import com.varun.taskmgmtapi.security.JwtService;
 import com.varun.taskmgmtapi.service.AuthService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,12 +20,15 @@ public class AuthServiceImpl implements AuthService {
 
     private UserRepo userRepo;
     private BCryptPasswordEncoder bCryptPasswordEncoder;
+    //we have to implement login, so we need token for that and token will be provided by JwtService, so add dependency
+    private JwtService jwtService;
 
     //constructor injection
     //before this, we need to create a bean of datatype BCryptPasswordEncoder
-    public AuthServiceImpl(UserRepo userRepo, BCryptPasswordEncoder bCryptPasswordEncoder) {
+    public AuthServiceImpl(UserRepo userRepo, BCryptPasswordEncoder bCryptPasswordEncoder, JwtService jwtService) {
         this.userRepo = userRepo;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
+        this.jwtService = jwtService;
     }
 
 
@@ -48,5 +54,23 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getRole()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LoginResponse login(LoginRequest loginRequest) {
+
+        User user=userRepo.findByEmail(loginRequest.getEmail())
+                .orElseThrow(() ->
+                        new RuntimeException("invalid email or password"));
+//in the input, first give raw password and then encoded pwd stored     in db
+        if(!bCryptPasswordEncoder.matches(loginRequest.getPassword(),user.getPassword())){
+            throw new RuntimeException("invalid password");
+        }
+//job of generating token is of JwtService
+        String token=jwtService.generateToken(user);
+        //call constructor of LoginResponse and pass token as attribute to create LoginResponse object
+        return new LoginResponse(token);
+        //u can check token on jwt.io
     }
 }

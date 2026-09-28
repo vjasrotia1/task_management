@@ -1,5 +1,7 @@
 package com.varun.taskmgmtapi.controller;
 
+import com.varun.taskmgmtapi.dto.authDto.LoginRequest;
+import com.varun.taskmgmtapi.dto.authDto.LoginResponse;
 import com.varun.taskmgmtapi.dto.authDto.RegisterRequest;
 import com.varun.taskmgmtapi.dto.authDto.UserResponse;
 import com.varun.taskmgmtapi.service.AuthService;
@@ -28,6 +30,15 @@ public class AuthController {
 
         return authService.register(registerRequest);
     }
-
     //now We'll build a proper global exception handler, so these errors return clean JSON.
+
+
+    //Add login endpoint
+    @PostMapping("/login")
+    @ResponseStatus(HttpStatus.OK)
+    public LoginResponse login(@Valid @RequestBody LoginRequest loginRequest){
+
+        return authService.login(loginRequest);
+        //next step after this is "make login public" in your security config
+    }
 }
