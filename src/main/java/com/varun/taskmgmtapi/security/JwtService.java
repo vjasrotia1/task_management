@@ -14,7 +14,7 @@ import java.util.Date;
 
 
 @Service
-//@service annotation: "This class contains application/business logic.
+//@service annotation: It says "This class contains application/business logic.
 // Please create an object of this class and manage it for me."
 public class JwtService {
     //this class has one responsibility-- crete and verify JWT
@@ -24,7 +24,7 @@ public class JwtService {
     //That's good separation of responsibility.
 
 //JWT or cryptography.
-//main idea is : This constructor takes a secret string from application.properties,
+//main idea is : This constructor takes a secretkey (datatype-string which is basically 64 bit encoded string) from application.properties,
 // converts it into a cryptographic key, and stores that key so the application can create/verify JWT tokens.
     //so basically secretkey is a cryptographic key used to cretae/verify JWT
     private final SecretKey secretKey;
@@ -35,7 +35,7 @@ public class JwtService {
             @Value("${jwt.expiration}") Long expiration
     ) {
         //secret is a string, but JWT cryptography library wants the secret in the form of bytes
-        //we hav to import below libraries by ourselves
+        //we have to import below libraries by ourselves
         //import io.jsonwebtoken.io.Decoders;
         //import io.jsonwebtoken.security.Keys;
         //it means "take this base-64 encoded string and convert it back to bytes(using decoder), we store these bytes in keyBytes array
