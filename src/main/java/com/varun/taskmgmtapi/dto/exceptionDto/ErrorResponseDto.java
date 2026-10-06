@@ -14,6 +14,7 @@ public class ErrorResponseDto {
     private int status;
     private String error;
     private String message;
-    //private Map<String, String> errors;
-    //with this (commented out) attribute above, Now we can represent both: normal errors(like resource already exists) and validation errors
+    private Map<String, String> errors;
+    //with this (commented out) attribute above,
+    // Now we can represent both: normal errors(like resource already exists) and validation errors
 }

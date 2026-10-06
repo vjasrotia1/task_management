@@ -48,11 +48,11 @@ public class User {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "assignedUser")
-    //with which field in tasks table will this attribute of User will get mapped to
-    //it means Task.assignedUser field in tasks table
+    //with which field in (Task entity) will this attribute of User will get mapped to
+    //it means Task.assignedUser field in (Tasks entity)
     //owns this relationship
     //This prevents JPA from creating unnecessary relationship tables/columns
-    //from the User side.
+    //on the User side.
     private List<Task> tasks=new ArrayList<>();
 
     @PrePersist

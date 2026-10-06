@@ -47,7 +47,7 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now(),
                 HttpStatus.CONFLICT.value(),
                 "conflict",
-                exception.getMessage()
+                exception.getMessage(),null
         );
     }
 
@@ -77,9 +77,6 @@ for (FieldError error : fieldErrors) {
     errors.put(fieldName, message);
 }
          */
-
-
-
 
         //it means--"From the exception, give me the information about the validation that failed."
         ex.getBindingResult()
@@ -111,4 +108,20 @@ FieldError
     message = "Password must have at least 6 characters"
          */
     }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+        public ErrorResponseDto handleResourceNotFoundException(ResourceNotFoundException exception) {
+
+    //;log.warn("Resource not found: {}", ex.getMessage());
+
+    return new ErrorResponseDto(
+            LocalDateTime.now(),
+            HttpStatus.NOT_FOUND.value(),
+            "resourceNotFound",
+            exception.getMessage(),null
+    );
+}
+
+
 }

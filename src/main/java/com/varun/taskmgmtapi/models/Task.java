@@ -31,7 +31,7 @@ public class Task {
     @Column(length = 2000)
     private String description;
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.STRING) //enumerated means "status will be stored in DB as string"
     @Column(nullable=false)
     //it means a newly created task starts as TODO
     private TaskStatus status=TaskStatus.TODO;
@@ -50,7 +50,7 @@ public class Task {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="assigned_user_id")
-    //@JoinCoumn -- tells JPA to "Create a foreign-key column in the tasks table called assigned_user_id."
+    //@JoinColumn -- tells JPA to "Create a foreign-key column(called assigned_user_id) in the tasks table."
     //fetch type -- lazy means " Don't immediately load the entire User object when loading a Task unless it's actually needed.
     private User assignedUser;
 
