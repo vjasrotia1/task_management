@@ -4,6 +4,7 @@ import com.varun.taskmgmtapi.dto.authDto.LoginRequest;
 import com.varun.taskmgmtapi.dto.authDto.LoginResponse;
 import com.varun.taskmgmtapi.dto.authDto.RegisterRequest;
 import com.varun.taskmgmtapi.dto.authDto.UserResponse;
+import com.varun.taskmgmtapi.exception.InvalidCredentialsException;
 import com.varun.taskmgmtapi.exception.ResourceAlreadyExistsException;
 import com.varun.taskmgmtapi.models.Role;
 import com.varun.taskmgmtapi.models.User;
@@ -62,10 +63,10 @@ public class AuthServiceImpl implements AuthService {
 
         User user=userRepo.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() ->
-                        new RuntimeException("invalid email or password"));
+                        new InvalidCredentialsException("Invalid email"));
 //in the input, first give raw password and then encoded pwd stored     in db
         if(!bCryptPasswordEncoder.matches(loginRequest.getPassword(),user.getPassword())){
-            throw new RuntimeException("invalid password");
+            throw new InvalidCredentialsException("Invalid password");
         }
 //job of generating token is of JwtService
         String token=jwtService.generateToken(user);

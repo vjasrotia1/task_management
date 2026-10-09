@@ -2,6 +2,7 @@ package com.varun.taskmgmtapi.config;
 
 //beans are created in securityconfig package
 //BcryptPasswordEncoder is a part of Spring Security
+//Your JWT filter is supposed to put the authentication object into SecurityContextHolder after validating the JWT
 import com.varun.taskmgmtapi.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

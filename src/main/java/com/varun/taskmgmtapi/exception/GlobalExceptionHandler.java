@@ -111,10 +111,8 @@ FieldError
 
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-        public ErrorResponseDto handleResourceNotFoundException(ResourceNotFoundException exception) {
-
-    //;log.warn("Resource not found: {}", ex.getMessage());
-
+    public ErrorResponseDto handleResourceNotFoundException(ResourceNotFoundException exception) {
+    //;log.warn("Resource not found: {}", ex.getMessage())
     return new ErrorResponseDto(
             LocalDateTime.now(),
             HttpStatus.NOT_FOUND.value(),
@@ -123,5 +121,29 @@ FieldError
     );
 }
 
+@ExceptionHandler(InvalidCredentialsException.class)
+@ResponseStatus(HttpStatus.UNAUTHORIZED)
+public ErrorResponseDto handleInvalidCredentialsException(InvalidCredentialsException exception) {
+//log.warn("Authentication failed");
+    return new ErrorResponseDto(
+    LocalDateTime.now(),
+            HttpStatus.UNAUTHORIZED.value(), //--->401
+            "Unauthorised",
+            exception.getMessage(),null
+    );
 
+}
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponseDto handleIllegalArgumentException(
+            IllegalArgumentException ex) {
+
+       return new ErrorResponseDto(
+               LocalDateTime.now(),
+               HttpStatus.BAD_REQUEST.value(),
+               "Bad Request",
+               ex.getMessage(),null
+       );
+    }
 }

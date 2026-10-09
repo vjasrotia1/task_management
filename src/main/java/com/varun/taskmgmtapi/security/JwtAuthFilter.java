@@ -47,6 +47,7 @@ public  JwtAuthFilter(JwtService jwtService, UserRepo userRepo) {
 
         if(authorizationHeader==null || !authorizationHeader.startsWith("Bearer ")){
             //then it is not a bearer token
+            //I am done processing this filter, go to next Spring Security filter or if not, go to Controller
             filterChain.doFilter(request,response);
             return;
         }
@@ -62,9 +63,10 @@ public  JwtAuthFilter(JwtService jwtService, UserRepo userRepo) {
             //        .build()
             //        .parseSignedClaims(token) --- this can throw an error if secretkeys donot match
             //        .getPayload();
-            //jwts.parser() is a say " digital letter checking tool/machine having say company stamp on it"
+            //jwts.parser() e.g. it is like "digital letter" checking tool/machine having "company" stamp with it"
             //.verifyWith(secretKey)-- means we provide a copy of company stamp(secretkey) to thus tool/machine
-            //.build()-- means turn on this machine
+            //or in other words, we can say parser() verifies incoming "digital letter" (i.e. token) with the help of this Stamp(secretKey)
+            //.build()-- means "now turn on this machine"
             //.parseSignedClaims(token)-- means compare the seal on the letter(token's secret key) with the seal provided in step 2
             //.getPayload()-- if seals match, get the payload
 
@@ -108,6 +110,7 @@ public  JwtAuthFilter(JwtService jwtService, UserRepo userRepo) {
             }
 
         }catch(Exception e){
+            e.printStackTrace();
             //invalid token
             //dont authenticate the request
         }

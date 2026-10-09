@@ -119,7 +119,7 @@ import java.util.Arrays;
 public class Demo {
 
     public static void main(String[] args) {
-
+if u decode an encoded string, it will give u byte array
         String secret = "SGVsbG8=";
 
         byte[] keyBytes = Base64.getDecoder().decode(secret);
@@ -132,13 +132,13 @@ public class Demo {
                  application.properties
                          │
                          ▼
-                 jwt.secret
+                 jwt.secret(is basically an encoded String)
                          │
                          ▼
-                  Base64 decode
+                  Base64 decoder
                          │
                          ▼
-                      byte[]
+                      byte[] array= Base64.getDecoder().decode(secret)
                          │
                          ▼
                hmacShaKeyFor()
