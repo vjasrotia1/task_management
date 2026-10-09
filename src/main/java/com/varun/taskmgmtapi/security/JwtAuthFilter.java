@@ -95,6 +95,11 @@ public  JwtAuthFilter(JwtService jwtService, UserRepo userRepo) {
                     UsernamePasswordAuthenticationToken authenticationObject =
                             new UsernamePasswordAuthenticationToken(user,null,authorities);
                     /*
+                    Here:
+
+                user — the authenticated user's entity.
+                null — credentials aren't needed after authentication.
+               authorities — the user's granted roles, such as ROLE_USER or ROLE_ADMIN
                     Authentication object has
                     ├── Principal → varun/User object
                     ├── Credentials → null
@@ -168,5 +173,37 @@ filterChain.doFilter()
 Next Spring Security filter
   ↓
 Controller
+
+
+The main idea is: instead of asking the client which user is logged in, we can get the authenticated user's information directly from Spring Security.
+
+1. Why do we need SecurityContextHolder?
+
+Suppose your database contains these users:
+
+User ID Name Role
+101 Rahul USER
+102 Amit USER
+103 varun ADMIN
+
+say, Rahul logs in and receives a JWT token.
+
+Now Rahul sends this request:
+
+GET /api/tasks/user/102
+
+If your API trusts the userId in the URL, Rahul might try to access Amit's tasks.
+Instead, we can identify Rahul from his (authenticated session context) and retrieve only Rahul's tasks.
+That's where SecurityContextHolder helps.
+
+1. Client sends JWT
+The request includes the Bearer token
+2. JwtAuthFilter validates the token
+It identifies the user by querying the DB and creates an Authentication object.
+3. SecurityContextHolder
+Spring Security makes the current Authentication Object available to your application code.
+4. Your controller or service
+Gets the authenticated user's identity and performs the appropriate operation.
+
  */
 

@@ -4,7 +4,10 @@ import com.varun.taskmgmtapi.dto.TaskDto.CreateTaskRequest;
 import com.varun.taskmgmtapi.dto.TaskDto.TaskResponse;
 import com.varun.taskmgmtapi.dto.TaskDto.UpdateTaskRequest;
 import com.varun.taskmgmtapi.dto.TaskDto.UpdateTaskStatusRequest;
+import com.varun.taskmgmtapi.exception.InvalidRoleException;
 import com.varun.taskmgmtapi.exception.ResourceNotFoundException;
+import com.varun.taskmgmtapi.exception.UserNotFoundException;
+import com.varun.taskmgmtapi.models.Role;
 import com.varun.taskmgmtapi.models.Task;
 import com.varun.taskmgmtapi.models.User;
 import com.varun.taskmgmtapi.repository.TaskRepo;
@@ -317,5 +320,39 @@ If any properties differ, the entity is marked "dirty," and Hibernate automatica
         return new PageImpl<>(taskResponseList,pageable,tasksPageforUser.getTotalElements());
         //this method is saying "Don't give me all tasks. Give me tasks belonging to this particular user, and paginate them.
 
+    }
+
+    @Override
+    @Transactional
+    public TaskResponse UpdateTheTask(Long taskId, UpdateTaskRequest updateTaskRequest) {
+        Task task=taskRepo.findById(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task with id "+taskId+" not found!"));
+
+        User user;
+        if(task.getAssignedUser()!=null){
+            user=task.getAssignedUser();
+        }
+        else{
+            throw new UserNotFoundException("No User was assigned to Task Id : "+taskId);
+        }
+
+        String role =user.getRole().name();
+
+        if(role.equals("ADMIN")){
+            task.setTitle(updateTaskRequest.getTaskName());
+            task.setDueDate(updateTaskRequest.getDueDate());
+            task.setStatus(updateTaskRequest.getStatus());
+            task.setDescription(updateTaskRequest.getDescription());
+
+            return convertToResponse(taskRepo.save(task));
+        }
+        else if(role.equals("USER")){
+            //match if user assigned to this task is the user sending this request
+
+        }
+        else{
+            throw new InvalidRoleException("Invalid Role : "+role);
+        }
+        return null;
     }
 }

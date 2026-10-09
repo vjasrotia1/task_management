@@ -6,6 +6,7 @@ package com.varun.taskmgmtapi.config;
 import com.varun.taskmgmtapi.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -13,6 +14,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@EnableMethodSecurity
+//@EnableMethodSecurity -- helps Spring to process @PreAuthorise
+//@EnableMethodSecurity is a configuration annotation. It enables (method-level security) feature throughout your application.
 //above annotation marks the class as source of bean definitions
 //@EnableWebSecurity: Activates Spring Security’s web security support and integrates it with your application
 public class SecurityConfig {
@@ -196,4 +200,54 @@ everyone walks right in. But to enter any actual office or the elevator, you mus
 Use code with caution.What it means: "Hey guard, regarding how people log in (Form Login), just use the standard, out-of-the-box settings that you came with." Layman Analogy: Don't build a custom, fancy badge-scanning station. Just use the standard turnstile and standard ID card scanner that the manufacturer provided. 🧩 Why the (x -> x...) syntax is usedThat weird arrow symbol (->) is just a pointer. You can read it out loud as "Configure it like this:" csrf(csrf -> ...) \[\rightarrow \] "For CSRF, configure the csrf system like this..."auth -> ... \[\rightarrow \] "For authorization, configure the auth rules like this..." It acts like an envelope. Everything inside that specific envelope belongs to only that security feature, keeping the rules neat, organized, and separated.
  */
 
+/*
+Suppose the database contains:
+
+id = 10
+name = Varun
+role = USER
+
+The JWT request comes in:
+
+DELETE /api/tasks/5
+Authorization: Bearer <JWT>
+
+Your JwtAuthFilter does roughly:
+
+JWT
+ ↓
+extract userId
+ ↓
+find User from DB
+ ↓
+user.getRole()
+ ↓
+USER
+ ↓
+ROLE_USER
+ ↓
+SecurityContext
+
+Then Spring reaches:
+
+@PreAuthorize("hasRole('ADMIN')")
+
+Spring effectively asks:
+
+Does SecurityContext contain ROLE_ADMIN?
+
+It contains:
+
+ROLE_USER
+
+Therefore:
+
+❌ Access denied
+
+and the client receives:
+
+403 Forbidden
+
+This is a real and expected 403
+ */
 

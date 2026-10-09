@@ -146,4 +146,17 @@ public ErrorResponseDto handleInvalidCredentialsException(InvalidCredentialsExce
                ex.getMessage(),null
        );
     }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponseDto handleUserNotFoundException(UserNotFoundException exception) {
+
+    return new ErrorResponseDto(
+            LocalDateTime.now(),
+            HttpStatus.NOT_FOUND.value(),
+            "UserNotFound",
+            exception.getMessage(),null
+    );
+
+    }
 }

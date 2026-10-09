@@ -5,10 +5,14 @@ import com.varun.taskmgmtapi.dto.TaskDto.CreateTaskRequest;
 import com.varun.taskmgmtapi.dto.TaskDto.TaskResponse;
 import com.varun.taskmgmtapi.dto.TaskDto.UpdateTaskRequest;
 import com.varun.taskmgmtapi.dto.TaskDto.UpdateTaskStatusRequest;
+import com.varun.taskmgmtapi.models.User;
 import com.varun.taskmgmtapi.service.TaskService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -53,7 +57,7 @@ public class TaskController {
 
 
 //    public List<TaskResponse> getAllTasks() {
-//        return  taskService.getAllTasks();
+//        return taskService.getAllTasks();
 //    }
 
     @PatchMapping("/{taskId}")
@@ -61,10 +65,18 @@ public class TaskController {
 
         return taskService.UpdateTask(taskId, updateTaskRequest);
     }
-
+    @PreAuthorize("hasRole('ADMIN')") //because only admin can delete the task
     @DeleteMapping("/{taskId}")
     public void deleteTaskById(@Valid @PathVariable("taskId") Long taskId) {
         taskService.deleteTask(taskId);
+        /*
+        now with @PreAuthorize Spring Security will check if logged in User has role of ADMIN or not
+        Is logged-in user ROLE_ADMIN?
+       ↓
+      YES → allow
+       ↓
+       NO → 403 Forbidden
+         */
     }
 
     @PatchMapping("/{taskId}/assign/{userId}")
@@ -78,7 +90,9 @@ public class TaskController {
         return taskService.changeTaskStatus(taskId, updateTaskStatusRequest);
     }
 
+    // ADMIN: View all tasks
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public Page<TaskResponse> getAllTheTasksPagewise(
             @RequestParam(defaultValue = "0") int pageNumber,
             @RequestParam(defaultValue = "2") int pageSize,
@@ -105,6 +119,43 @@ public class TaskController {
     {
         return taskService.getAllTheTasksByUserIdPageWise(userId,
                 pageNumber,pageSize,sortBy,sortingDirection);
+    }
+
+    //Suppose you want an endpoint that returns tasks belonging to the currently logged-in user.
+    //Instead of requiring the user ID in the URL, u can simply use "/my",because The server determines the user from their JWT.
+    //We'll make the API identify the logged-in user automatically, so the client doesn't need to send their user ID.
+
+    // USER: View their own tasks
+    @GetMapping("/my")
+    public List<TaskResponse> getMyTasks() {
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        assert authentication != null;
+        User user = (User) authentication.getPrincipal();
+        Long userId = user.getId();
+
+        return taskService.getTasksByUserId(userId);
+        /*
+        other way
+        import org.springframework.security.core.annotation.AuthenticationPrincipal;
+
+        @GetMapping("/my")
+        public List<TaskResponse> getMyTasks(
+        @AuthenticationPrincipal User user) {
+
+            return taskService.getTasksByUserId(user.getId());
+        }
+         */
+        //This example assumes your JWTfilter uses the User entity as its principal
+        //Neither user chooses whose identity the server uses.
+        //The server derives the "identity" from the authenticated request/object rather than trusting a user ID supplied by the client.
+
+        //One more important distinction:
+        // being authenticated doesn't automatically mean a user owns a particular task.
+        // For operations such as (updating a task),
+        //you should also verify task ownership in your service unless the user has an explicitly permitted ADMIN privilege.
     }
 
 }

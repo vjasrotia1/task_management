@@ -19,4 +19,5 @@ public interface TaskService {
     TaskResponse changeTaskStatus(Long taskId, UpdateTaskStatusRequest updateTaskStatusRequest);
     Page<TaskResponse> getAllTheTasksPagewise(int pageNumber, int size,String sortBy,String sortDirection);
     Page<TaskResponse> getAllTheTasksByUserIdPageWise(Long userId, int pageNumber, int pageSize, String sortBy, String direction);
+    TaskResponse UpdateTheTask(Long taskId, UpdateTaskRequest updateTaskRequest);
 }

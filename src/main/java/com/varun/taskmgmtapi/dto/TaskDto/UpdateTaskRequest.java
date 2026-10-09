@@ -14,12 +14,9 @@ public class UpdateTaskRequest {
 
     @NotBlank(message = "taskName is required")
     private String taskName;
-
     private String description;
-
     @NotNull(message = "status is required")
     private TaskStatus status;
-
     private LocalDate dueDate;
 }
 /*
