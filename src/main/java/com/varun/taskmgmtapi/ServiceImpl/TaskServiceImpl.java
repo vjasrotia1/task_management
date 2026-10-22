@@ -14,11 +14,13 @@ import com.varun.taskmgmtapi.repository.TaskRepo;
 import com.varun.taskmgmtapi.repository.UserRepo;
 import com.varun.taskmgmtapi.service.TaskService;
 import org.springframework.data.domain.*;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -32,7 +34,7 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
-    public TaskResponse createTask(CreateTaskRequest createTaskRequest) {
+    public TaskResponse createTask(CreateTaskRequest createTaskRequest,Long currentUserId, boolean isAdmin) {
         /*
         suppose the business requirement says task titles must be unique
         if(taskRepo.existsByTitle(createTaskRequest.getTaskName())){
@@ -43,10 +45,46 @@ public class TaskServiceImpl implements TaskService {
         task.setTitle(createTaskRequest.getTaskName());
         task.setDescription(createTaskRequest.getTaskDescription());
         task.setDueDate(createTaskRequest.getDueDate());
+        if(!isAdmin) {
+            //NORMAL USER: task should be auto-assigned to the user itself
+            User currentUser=userRepo.findById(currentUserId)
+                    .orElseThrow(()->new UserNotFoundException("User with id " +currentUserId+" not found"));
+            task.setAssignedUser(currentUser);
+        }
+        else{
+            //ADMIN: if current User is Admin, then he can assign the task to anyone
+            Long assignedUserId= createTaskRequest.getAssignedUserId();
 
-        Task savedTask=taskRepo.save(task);
+            if(assignedUserId==null){
+                //assign the task to this Admin itself
+                User user=userRepo.findById(currentUserId)
+                                .orElseThrow(()->new UserNotFoundException("User with id " +currentUserId+" not found"));
+                task.setAssignedUser(user);
+            }
+            else{
 
-        return convertToResponse(savedTask);
+                //check if assignedUser exists in DB or not. if exists assign the task to the User
+                User assignedUser=userRepo.findById(assignedUserId)
+                        .orElseThrow(()->new UserNotFoundException("User with id " +assignedUserId+" not found"));
+
+                task.setAssignedUser(assignedUser);
+            }
+        }
+        taskRepo.save(task);
+        return convertToResponse(task);
+    }
+
+    @Override
+    public TaskResponse getTasksById(Long taskId, Long currentUserId, boolean isAdmin) {
+
+        Task task=taskRepo.findById(taskId)
+                .orElseThrow(()->new ResourceNotFoundException("Task with id "+ taskId+ " not found"));
+
+        boolean isOwner= task.getAssignedUser()!=null && task.getAssignedUser().getId().equals(currentUserId);
+        if(!isOwner && !isAdmin){
+            throw new AccessDeniedException("You are not authorised to perform this action");
+        }
+        return  convertToResponse(task) ;
     }
 
     //this function is basically converting Task to TaskResponse
@@ -74,16 +112,18 @@ public class TaskServiceImpl implements TaskService {
 
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public TaskResponse getTasksById(Long id) {
-        Task task=taskRepo.findById(id)
-                .orElseThrow(()-> new ResourceNotFoundException("Task with id: " + id + " not found!"));
-        //here  java is saying : "I'm giving you a small piece of code. Don't execute it now.
-        // Execute it only if the Optional is empty."
-        //When you need the exception, create this exception or else if Optional is not empty return Task
-        return convertToResponse(task);
-    }
+//    @Override
+//    @Transactional(readOnly = true)
+//    public TaskResponse getTasksById(Long taskId) {
+//        Task task=taskRepo.findById(taskId)
+//                .orElseThrow(()-> new ResourceNotFoundException("Task with id: " + taskId + " not found!"));
+//        //here  java is saying : "I'm giving you a small piece of code. Don't execute it now.
+//        // Execute it only if the Optional is empty."
+//        //When you need the exception, create this exception or else if Optional is not empty return Task
+//
+//
+//        return convertToResponse(task);
+//    }
 
     @Override
     @Transactional(readOnly = true)
@@ -102,27 +142,52 @@ public class TaskServiceImpl implements TaskService {
          */
     }
 
-
     @Override
-    @Transactional
-    public TaskResponse UpdateTask(Long id,UpdateTaskRequest updateTaskRequest) {
-        //We could technically put the ID inside UpdateTaskRequest
-        //but in REST APIs--> it is cleaner to keep
-        //URL → identifies the resource
-        //Body → contains the changes
+    public TaskResponse UpdateTask(Long taskId, UpdateTaskRequest updateTaskRequest, Long currentUserId, boolean isAdmin) {
 
-        Task task=taskRepo.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Task with id: " + id + " not found!"));
+        Task task=taskRepo.findById(taskId)
+                .orElseThrow(()-> new ResourceNotFoundException("Task with id: " + taskId + " not found!"));
+
+        //Check whether the current user owns this task.
+        //Apply the ownership rule
+        boolean isOwner=task.getAssignedUser()!=null && task.getAssignedUser().getId().equals(currentUserId);
+
+        //    // Deny access if the user is neither ADMIN nor the owner.
+        if(!isOwner && !isAdmin) {
+            throw new AccessDeniedException("You are not allowed to perform this action!");
+        }
 
         task.setTitle(updateTaskRequest.getTaskName());
         task.setDescription(updateTaskRequest.getDescription());
         task.setDueDate(updateTaskRequest.getDueDate());
         task.setStatus(updateTaskRequest.getStatus());
 
-        Task UpdatedTask=taskRepo.save(task);
-        return convertToResponse(UpdatedTask);
+        Task savedTask=taskRepo.save(task);
+        return convertToResponse(savedTask);
     }
+
+
+//    @Override
+//    @Transactional
+//    public TaskResponse UpdateTask(Long taskId,UpdateTaskRequest updateTaskRequest) {
+//        //We could technically put the ID inside UpdateTaskRequest
+//        //but in REST APIs--> it is cleaner to keep
+//        //URL → identifies the resource
+//        //Body → contains the changes
+//
+//        Task task=taskRepo.findById(taskId)
+//                .orElseThrow(() ->
+//                        new ResourceNotFoundException("Task with id: " + taskId + " not found!"));
+//
+//        task.setTitle(updateTaskRequest.getTaskName());
+//        task.setDescription(updateTaskRequest.getDescription());
+//        task.setDueDate(updateTaskRequest.getDueDate());
+//        task.setStatus(updateTaskRequest.getStatus());
+//
+//        Task UpdatedTask=taskRepo.save(task);
+//        return convertToResponse(UpdatedTask);
+//    }
+
 
     @Override
     @Transactional
@@ -215,6 +280,8 @@ If any properties differ, the entity is marked "dirty," and Hibernate automatica
 
     @Override
     @Transactional(readOnly = true)
+    //for this method/api, in the task controller itself we have used @PreAuthorize("hasRole('ADMIN')")
+    //so only admin can access this endpoint
     public Page<TaskResponse> getAllTheTasksPagewise(int pageNumber, int size, String sortbycolumn, String sortDirection) {
 
         if(pageNumber<0) {
@@ -320,39 +387,5 @@ If any properties differ, the entity is marked "dirty," and Hibernate automatica
         return new PageImpl<>(taskResponseList,pageable,tasksPageforUser.getTotalElements());
         //this method is saying "Don't give me all tasks. Give me tasks belonging to this particular user, and paginate them.
 
-    }
-
-    @Override
-    @Transactional
-    public TaskResponse UpdateTheTask(Long taskId, UpdateTaskRequest updateTaskRequest) {
-        Task task=taskRepo.findById(taskId)
-                .orElseThrow(() -> new ResourceNotFoundException("Task with id "+taskId+" not found!"));
-
-        User user;
-        if(task.getAssignedUser()!=null){
-            user=task.getAssignedUser();
-        }
-        else{
-            throw new UserNotFoundException("No User was assigned to Task Id : "+taskId);
-        }
-
-        String role =user.getRole().name();
-
-        if(role.equals("ADMIN")){
-            task.setTitle(updateTaskRequest.getTaskName());
-            task.setDueDate(updateTaskRequest.getDueDate());
-            task.setStatus(updateTaskRequest.getStatus());
-            task.setDescription(updateTaskRequest.getDescription());
-
-            return convertToResponse(taskRepo.save(task));
-        }
-        else if(role.equals("USER")){
-            //match if user assigned to this task is the user sending this request
-
-        }
-        else{
-            throw new InvalidRoleException("Invalid Role : "+role);
-        }
-        return null;
     }
 }

@@ -9,15 +9,14 @@ import org.springframework.data.domain.Page;
 import java.util.List;
 
 public interface TaskService {
-    TaskResponse createTask(CreateTaskRequest createTaskRequest);
-    TaskResponse getTasksById(Long id);
+    TaskResponse createTask(CreateTaskRequest createTaskRequest, Long currentUserId, boolean isAdmin);
+    TaskResponse getTasksById(Long taskId,Long currentUserId,boolean isAdmin);
     List<TaskResponse> getAllTasks();
-    TaskResponse UpdateTask(Long id,UpdateTaskRequest updateTaskRequest);
+    TaskResponse UpdateTask(Long taskId,UpdateTaskRequest updateTaskRequest,Long currentUserId,boolean isAdmin);
     void deleteTask(Long id);
     List<TaskResponse> getTasksByUserId(Long userId);
     TaskResponse assignTask(Long taskId,Long userId);
     TaskResponse changeTaskStatus(Long taskId, UpdateTaskStatusRequest updateTaskStatusRequest);
     Page<TaskResponse> getAllTheTasksPagewise(int pageNumber, int size,String sortBy,String sortDirection);
     Page<TaskResponse> getAllTheTasksByUserIdPageWise(Long userId, int pageNumber, int pageSize, String sortBy, String direction);
-    TaskResponse UpdateTheTask(Long taskId, UpdateTaskRequest updateTaskRequest);
 }

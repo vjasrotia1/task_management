@@ -52,6 +52,9 @@ public class SecurityConfig {
 
         //Here, We'll secure task APIs after we build the JWT filter.
         http.csrf(csrf -> csrf.disable())
+                /*
+                Existing configuration disables CSRF and uses stateless sessions, which is a common setup for a REST API that authenticates exclusively through bearer tokens. If your frontend sends credentials through cookies instead, the CSRF decision needs to be revisited.
+                 */
                 //traditional session authentication
 
                 //Login

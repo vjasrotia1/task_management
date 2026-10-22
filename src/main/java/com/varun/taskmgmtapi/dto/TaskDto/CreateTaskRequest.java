@@ -12,11 +12,14 @@ import java.time.LocalDate;
 //of datatype CreateTaskRequest, so we need to set the values of attributes/fields of CreateTaskRequest class/obj with
 //the help of JSON
 public class CreateTaskRequest {
+    //The frontend should not send assignedUserId for a USER role. as USER Role has no authority to assign task to another user
+    //The backend should automatically assign the task to the logged-in user.
 
     @NotBlank(message = "taskname is required")
     private String taskName;
     private String taskDescription;
     private LocalDate dueDate;
+    private Long assignedUserId;
 
 }
 /*

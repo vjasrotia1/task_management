@@ -7,6 +7,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,6 +31,7 @@ The filter handles authentication centrally.
 public class JwtAuthFilter extends OncePerRequestFilter {
 private JwtService jwtService;
 private UserRepo userRepo;
+private static final Logger logger= LoggerFactory.getLogger(JwtAuthFilter.class);
 
 
 public  JwtAuthFilter(JwtService jwtService, UserRepo userRepo) {
@@ -47,7 +50,7 @@ public  JwtAuthFilter(JwtService jwtService, UserRepo userRepo) {
 
         if(authorizationHeader==null || !authorizationHeader.startsWith("Bearer ")){
             //then it is not a bearer token
-            //I am done processing this filter, go to next Spring Security filter or if not, go to Controller
+            //I am done processing this JWT filter, go to next Spring Security filter or if not, go to Controller
             filterChain.doFilter(request,response);
             return;
         }
@@ -115,9 +118,16 @@ public  JwtAuthFilter(JwtService jwtService, UserRepo userRepo) {
             }
 
         }catch(Exception e){
-            e.printStackTrace();
+            //because, It logs the exception message but not the stack trace
+            logger.warn("JWT authentication failed", e);
+            //Avoid logging the JWT itself.Logging alone doesn't reject an invalid token;Spring Security must still protect your endpoints.
             //invalid token
             //dont authenticate the request
+            /*
+            Suppose the token fails because its signature is invalid. Your logs can now show the exception type and the stack trace, helping you locate the failure.
+Note that this catch block also catches database and programming errors, not just JWT errors.
+For a production application, you should distinguish expected invalid-token exceptions from unexpected application failures rather than labeling every exception as a JWT failure.
+             */
         }
         //It means:
         //"I'm done processing this filter. Continue the request." you can proceed to Next Spring Security filter

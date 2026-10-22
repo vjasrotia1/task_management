@@ -17,6 +17,18 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/*
+policy for my project:
+- USER: Can update a task assigned to them.
+- ADMIN: Can update any task.
+- USER: Cannot update another user's task.
+- ADMIN: Can view all tasks and delete tasks
+ */
+
+
+
+
+
 @RestController
 @RequestMapping("/api/tasks")
 public class TaskController {
@@ -29,13 +41,42 @@ public class TaskController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TaskResponse createTask(@Valid @RequestBody CreateTaskRequest createTaskRequest) {
-            return taskService.createTask(createTaskRequest);
+        Authentication authenticationObj=SecurityContextHolder.getContext().getAuthentication();
+            assert  authenticationObj!=null;
+        User user=(User)authenticationObj.getPrincipal();
+        assert user!=null;
+        Long userId=user.getId();
+
+        String role=authenticationObj.getAuthorities().iterator().next().getAuthority();
+
+        boolean isAdmin=false;
+        if(role.equals("ROLE_ADMIN")){
+            isAdmin=true;
+        }
+
+            return taskService.createTask(createTaskRequest,userId,isAdmin);
     }
 
 
     @GetMapping("/{taskId}")
     public TaskResponse getTaskById(@Valid @PathVariable("taskId") Long taskId) {
-        return taskService.getTasksById(taskId);
+        Authentication authObj=SecurityContextHolder.getContext().getAuthentication();
+        assert authObj != null;
+        User user=(User) authObj.getPrincipal();
+        assert user != null;
+        Long userId=user.getId();
+
+        String role=authObj.getAuthorities()
+                .iterator()
+                .next()
+                .getAuthority();
+
+        boolean isAdmin=false;
+        if(role.equals("ROLE_ADMIN")){
+            isAdmin=true;
+        }
+
+        return taskService.getTasksById(taskId,userId,isAdmin);
     }
     //The variable names taskId and userId do not make the URLs different.
     //so spring says: Ambiguous handler methods mapped for '/api/tasks/2'
@@ -61,9 +102,39 @@ public class TaskController {
 //    }
 
     @PatchMapping("/{taskId}")
-    public TaskResponse updateTask(@Valid @RequestBody UpdateTaskRequest updateTaskRequest, @PathVariable("taskId") Long taskId) {
+    //The next step is to pass the authenticated user's ID and role from the controller
+    //  and not from request parameters that the client can manipulate
+    //the server will determine the current user's ID and role from Spring Security,
+    //rather than trusting a user ID sent by the client.
+    public TaskResponse updateTask(@PathVariable("taskId") Long taskId, @Valid @RequestBody UpdateTaskRequest updateTaskRequest) {
 
-        return taskService.UpdateTask(taskId, updateTaskRequest);
+        Authentication authObj=SecurityContextHolder.getContext().getAuthentication();
+        assert authObj != null;
+        User user=(User) authObj.getPrincipal();
+        assert user != null;
+        Long userId=user.getId();
+
+        //getAuthorities() contains GrantedAuthority objects, not String objects.
+        // Casting one directly to String will cause a ClassCastException.
+
+        String role=authObj.getAuthorities()
+                //getAuthorities()--> gets the user's granted permissions.
+                .iterator()
+                .next()
+                //iterator().next()-->gets the first authority
+                .getAuthority();
+        //retrieves its text, such as "ROLE_ADMIN" or "ROLE_USER".
+        //This assumes your authentication contains at least one authority,
+        // as your JWT filter should assign the user's role.
+
+
+        boolean isAdmin=false;
+
+        assert role != null;
+        if(role.equals("ROLE_ADMIN")){
+            isAdmin=true;
+        }
+        return taskService.UpdateTask(taskId,updateTaskRequest,userId,isAdmin);
     }
     @PreAuthorize("hasRole('ADMIN')") //because only admin can delete the task
     @DeleteMapping("/{taskId}")
@@ -80,6 +151,7 @@ public class TaskController {
     }
 
     @PatchMapping("/{taskId}/assign/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public TaskResponse assignTask(@PathVariable("taskId") Long taskId, @PathVariable("userId") Long userId) {
         return taskService.assignTask(taskId, userId);
     }
@@ -99,6 +171,8 @@ public class TaskController {
             @RequestParam(defaultValue= "createdAt") String sortByColumn,
             @RequestParam(defaultValue= "desc") String directionCriteria
     )
+
+
     {
         return taskService.getAllTheTasksPagewise(
                 pageNumber,
@@ -107,6 +181,8 @@ public class TaskController {
                 directionCriteria);
     }
 
+    //In real World, instead of requiring the userId in the URL
+    //you can expose: GET/api/tasks/my--> where the server determines the User from their JWT---> as shown below
     @GetMapping("/user/{userId}")
     public Page<TaskResponse> getAllTheTasksforUserPagewise(
             @PathVariable("userId") Long userId,
@@ -127,16 +203,32 @@ public class TaskController {
 
     // USER: View their own tasks
     @GetMapping("/my")
-    public List<TaskResponse> getMyTasks() {
-
-        Authentication authentication =
+    public Page<TaskResponse> getMyTasks(
+            @RequestParam(defaultValue = "0") int pageNumber,
+            @RequestParam(defaultValue = "2") int pageSize,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortingDirection
+    )
+    {
+    //it means : get the current authenticated request's security information, including principal and authorities
+        //the server derives the identity from authenticated requestrather than trusting a userIdprovided by client
+        Authentication authenticationObj =
                 SecurityContextHolder.getContext().getAuthentication();
 
-        assert authentication != null;
-        User user = (User) authentication.getPrincipal();
+        assert authenticationObj != null;
+        //Gets the principal and casts it to your User entity.
+        //make sure to have following imports
+        /*
+        import org.springframework.security.core.Authentication;
+        import org.springframework.security.core.context.SecurityContextHolder;
+         */
+        //we can retrive User in controller as below
+        //the controller must derive these arguments from the authenticated principal and its granted authorities, never from request-body fields or arbitrary query parameters or request params.
+        User user = (User) authenticationObj.getPrincipal();
+        assert user != null;
         Long userId = user.getId();
 
-        return taskService.getTasksByUserId(userId);
+        return taskService.getAllTheTasksByUserIdPageWise(userId,pageNumber,pageSize,sortBy,sortingDirection);
         /*
         other way
         import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -145,8 +237,14 @@ public class TaskController {
         public List<TaskResponse> getMyTasks(
         @AuthenticationPrincipal User user) {
 
+        a controller parameter such as (@AuthenticationPrincipal User currentUser) should work when this JWTfilter successfully authenticates the request and Spring Security's context is preserved.
+with this  @AuthenticationPrincipal annotation, we cn get Principal without manually accessing SecurityContextHolder
+Spring injects the authenticated principal into the method parameter
+The user ID must come from the authenticated principal, not from a client-supplied ID that the server blindly trusts
             return taskService.getTasksByUserId(user.getId());
         }
+       ALSO (retrieving tasks for the current user) is different from updating or deleting a task:
+       for those operations, you must separately enforce ownership and/or the appropriate ADMIN permission.
          */
         //This example assumes your JWTfilter uses the User entity as its principal
         //Neither user chooses whose identity the server uses.
