@@ -42,9 +42,9 @@ public class TaskController {
     @ResponseStatus(HttpStatus.CREATED)
     public TaskResponse createTask(@Valid @RequestBody CreateTaskRequest createTaskRequest) {
         Authentication authenticationObj=SecurityContextHolder.getContext().getAuthentication();
-            assert  authenticationObj!=null;
+            //assert  authenticationObj!=null;
         User user=(User)authenticationObj.getPrincipal();
-        assert user!=null;
+        //assert user!=null;
         Long userId=user.getId();
 
         String role=authenticationObj.getAuthorities().iterator().next().getAuthority();
@@ -53,6 +53,24 @@ public class TaskController {
         if(role.equals("ROLE_ADMIN")){
             isAdmin=true;
         }
+
+        /*
+        other way
+        Authentication authentication =
+            SecurityContextHolder.getContext().getAuthentication();
+
+    if (authentication == null
+            || !(authentication.getPrincipal() instanceof User user)) {
+        throw new AccessDeniedException("Current User is not authenticated");
+    }
+
+    boolean isAdmin = user.getRole() == Role.ADMIN;
+
+    return taskService.createTask(
+            createTaskRequest,
+            user.getId(),
+            isAdmin);
+         */
 
             return taskService.createTask(createTaskRequest,userId,isAdmin);
     }
