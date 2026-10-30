@@ -49,8 +49,7 @@ public class User {
 
     @OneToMany(mappedBy = "assignedUser")
     //with which field in (Task entity) will this attribute of User will get mapped to
-    //it means Task.assignedUser field in (Tasks entity)
-    //owns this relationship
+    //it means Task.assignedUser field/attribute in (Tasks entity) owns this relationship
     //This prevents JPA from creating unnecessary relationship tables/columns
     //on the User side.
     private List<Task> tasks=new ArrayList<>();

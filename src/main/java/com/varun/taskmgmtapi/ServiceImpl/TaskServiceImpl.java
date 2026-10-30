@@ -46,23 +46,23 @@ public class TaskServiceImpl implements TaskService {
         task.setDescription(createTaskRequest.getTaskDescription());
         task.setDueDate(createTaskRequest.getDueDate());
         if(!isAdmin) {
-            //NORMAL USER: task should be auto-assigned to the user itself
+            //NORMAL USER: task should be auto-assigned to the user itself,check if this user exists in db or not
             User currentUser=userRepo.findById(currentUserId)
                     .orElseThrow(()->new UserNotFoundException("User with id " +currentUserId+" not found"));
             task.setAssignedUser(currentUser);
         }
         else{
-            //ADMIN: if current User is Admin, then he can assign the task to anyone
+            //if logged in User is ADMIN: if current User is Admin, then he can assign the task to anyone
             Long assignedUserId= createTaskRequest.getAssignedUserId();
 
             if(assignedUserId==null){
-                //assign the task to this Admin itself
+                //admin has no one to assign this task, so assign the task to this Admin itself
+                //first check if admin exits in our db or not
                 User user=userRepo.findById(currentUserId)
                                 .orElseThrow(()->new UserNotFoundException("User with id " +currentUserId+" not found"));
                 task.setAssignedUser(user);
             }
             else{
-
                 //check if assignedUser exists in DB or not. if exists assign the task to the User
                 User assignedUser=userRepo.findById(assignedUserId)
                         .orElseThrow(()->new UserNotFoundException("User with id " +assignedUserId+" not found"));
@@ -128,11 +128,12 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional(readOnly = true)
     public List<TaskResponse> getAllTasks() {
+        //By default, Spring Data's JpaRepository.findAll() returns a List<Task>, not an Optional
         List<Task> tasks=taskRepo.findAll();
         List<TaskResponse> taskResponses=new ArrayList<>();
         for(Task task:tasks){
-            TaskResponse response=convertToResponse(task);
-            taskResponses.add(response);
+            TaskResponse taskResponse=convertToResponse(task);
+            taskResponses.add(taskResponse);
         }
         return taskResponses;
         /*
