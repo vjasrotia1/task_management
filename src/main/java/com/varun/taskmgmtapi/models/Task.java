@@ -52,7 +52,7 @@ public class Task {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="assigned_user_id")
     //@JoinColumn -- tells JPA to "Create a foreign-key column(called assigned_user_id) in the tasks table."
-    //fetch type -- lazy means "Don't immediately load the entire User object when loading a Task unless it's actually needed.
+    //fetch type -- lazy means "    Don't immediately load the entire User object when loading a Task unless it's actually needed.
     //Task owns the @ManyToOne relationship through : @JoinColumn(name="assigned_user_id")
     private User assignedUser;
 

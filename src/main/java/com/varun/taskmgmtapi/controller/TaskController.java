@@ -5,11 +5,13 @@ import com.varun.taskmgmtapi.dto.TaskDto.CreateTaskRequest;
 import com.varun.taskmgmtapi.dto.TaskDto.TaskResponse;
 import com.varun.taskmgmtapi.dto.TaskDto.UpdateTaskRequest;
 import com.varun.taskmgmtapi.dto.TaskDto.UpdateTaskStatusRequest;
+import com.varun.taskmgmtapi.models.Role;
 import com.varun.taskmgmtapi.models.User;
 import com.varun.taskmgmtapi.service.TaskService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -177,7 +179,14 @@ public class TaskController {
     @PatchMapping("/{taskId}/status")
     public TaskResponse changeTaskStatus(@PathVariable("taskId") Long taskId, @Valid @RequestBody UpdateTaskStatusRequest updateTaskStatusRequest) {
 
-        return taskService.changeTaskStatus(taskId, updateTaskStatusRequest);
+        Authentication authObj=SecurityContextHolder.getContext().getAuthentication();
+        if(authObj==null || !(authObj.getPrincipal() instanceof User user)){
+            throw new AccessDeniedException("user is not authenticated");
+        }
+        Long userId=user.getId();
+        boolean isAdmin=user.getRole()== Role.ADMIN;
+
+        return taskService.changeTaskStatus(taskId,updateTaskStatusRequest,userId,isAdmin);
     }
 
     // ADMIN: View all tasks

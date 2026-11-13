@@ -1,0 +1,10 @@
+#.dockerignore contains files Docker should exclude
+target/
+.git/
+.idea/
+*.iml
+.DS_Store
+.env
+#The .env exclusion is particularly important because we will eventually store database credentials
+#and JWT secrets there.
+*.log

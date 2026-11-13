@@ -9,6 +9,7 @@ import com.varun.taskmgmtapi.exception.ResourceNotFoundException;
 import com.varun.taskmgmtapi.exception.UserNotFoundException;
 import com.varun.taskmgmtapi.models.Role;
 import com.varun.taskmgmtapi.models.Task;
+import com.varun.taskmgmtapi.models.TaskStatus;
 import com.varun.taskmgmtapi.models.User;
 import com.varun.taskmgmtapi.repository.TaskRepo;
 import com.varun.taskmgmtapi.repository.UserRepo;
@@ -18,6 +19,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -81,6 +83,7 @@ public class TaskServiceImpl implements TaskService {
                 .orElseThrow(()->new ResourceNotFoundException("Task with id "+ taskId+ " not found"));
 
         boolean isOwner= task.getAssignedUser()!=null && task.getAssignedUser().getId().equals(currentUserId);
+
         if(!isOwner && !isAdmin){
             throw new AccessDeniedException("You are not authorised to perform this action");
         }
@@ -163,8 +166,8 @@ public class TaskServiceImpl implements TaskService {
         task.setDueDate(updateTaskRequest.getDueDate());
         task.setStatus(updateTaskRequest.getStatus());
 
-        Task savedTask=taskRepo.save(task);
-        return convertToResponse(savedTask);
+        taskRepo.save(task);
+        return convertToResponse(task);
     }
 
 
@@ -259,15 +262,73 @@ If any properties differ, the entity is marked "dirty," and Hibernate automatica
     }
 
     @Override
-    @Transactional
-    public TaskResponse changeTaskStatus(Long taskId, UpdateTaskStatusRequest updateTaskStatusRequest) {
-
+    @Transactional //-it means JPA dirty checking will normally persist chnages to a managed entity when the transaction commits
+    public TaskResponse changeTaskStatus(Long taskId, UpdateTaskStatusRequest updateTaskStatusRequest,Long currentUserId, boolean isAdmin) {
+        //1. find task
         Task task=taskRepo.findById(taskId)
                 .orElseThrow(()->
                         new ResourceNotFoundException("Task with id: "+taskId+" not found!"));
 
-                task.setStatus(updateTaskStatusRequest.getStatus());
+        //2. check ownership
+        boolean isOwner=task.getAssignedUser()!=null && task.getAssignedUser().getId().equals(currentUserId);
+        if(!isOwner && !isAdmin) {
+            throw new AccessDeniedException("You are not authorised to perform this action!");
+        }
+
+//        if(task.getStatus().equals(TaskStatus.TODO)) {
+//            //allow only change to TaskStatus.IN_PROGRESS
+//            if(updateTaskStatusRequest.getStatus().equals(TaskStatus.IN_PROGRESS)){
+//                task.setStatus(TaskStatus.IN_PROGRESS);
+//            }
+//        }
+//        else if(task.getStatus().equals(TaskStatus.IN_PROGRESS)) {
+//            //allow only change to TaskStatus.TODO and TaskStatus.DONE
+//            if(updateTaskStatusRequest.getStatus().equals(TaskStatus.DONE)){
+//                task.setStatus(TaskStatus.DONE);
+//            }
+//            else if(updateTaskStatusRequest.getStatus().equals(TaskStatus.TODO)){
+//                task.setStatus(TaskStatus.TODO);
+//            }
+//        }
+//
+//        else if (task.getStatus().equals(TaskStatus.DONE)){
+//            //allow only change to TaskStatus.IN_PROGRESS
+//            if(updateTaskStatusRequest.getStatus().equals(TaskStatus.IN_PROGRESS)){
+//                task.setStatus(TaskStatus.IN_PROGRESS);
+//            }
+//        }
+        boolean isValidTransition=false;
+        TaskStatus requestedStatus=updateTaskStatusRequest.getStatus();
+        //validate status Transition
+        if(task.getStatus()==TaskStatus.TODO){
+            isValidTransition=requestedStatus==TaskStatus.IN_PROGRESS;
+        }
+        else if(task.getStatus()==TaskStatus.IN_PROGRESS){
+            isValidTransition=(requestedStatus==TaskStatus.DONE|| requestedStatus==TaskStatus.TODO);
+        }
+        else if(task.getStatus()==TaskStatus.DONE){
+            isValidTransition=requestedStatus==TaskStatus.IN_PROGRESS;
+        }
+        if(!isValidTransition){
+            throw new IllegalArgumentException("Invalid Task Status Transition");
+        }
+        task.setStatus(requestedStatus);
+        //updating status should update UpdatedAt Timestamp
+        task.setUpdatedAt(LocalDateTime.now());
+        taskRepo.save(task);
         return convertToResponse(task);
+
+        /*
+        Final business rules
+        Your method will now enforce:
+        1. Task must exist.
+        2. Only the assigned USER or ADMIN can change its status.
+        3. TODO → IN_PROGRESS.
+        4. IN_PROGRESS → TODO or DONE.
+        5. DONE → IN_PROGRESS.
+        6. Invalid transitions throw an exception.
+        7. Successful updates modify updatedAt and save the task.
+         */
     }
 
     private static  final Set<String> ALLOWED_SORT_FIELDS=

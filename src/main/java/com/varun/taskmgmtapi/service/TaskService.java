@@ -16,7 +16,7 @@ public interface TaskService {
     void deleteTask(Long id);
     List<TaskResponse> getTasksByUserId(Long userId);
     TaskResponse assignTask(Long taskId,Long userId);
-    TaskResponse changeTaskStatus(Long taskId, UpdateTaskStatusRequest updateTaskStatusRequest);
+    TaskResponse changeTaskStatus(Long taskId, UpdateTaskStatusRequest updateTaskStatusRequest,Long  currentUserId, boolean isAdmin);
     Page<TaskResponse> getAllTheTasksPagewise(int pageNumber, int size,String sortBy,String sortDirection);
     Page<TaskResponse> getAllTheTasksByUserIdPageWise(Long userId, int pageNumber, int pageSize, String sortBy, String direction);
 }

@@ -1,0 +1,81 @@
+
+services:
+
+  # MySQL Database Container
+  mysql:
+    image: mysql:8.4
+    #This tells Docker to use the MySQL 8.4 image.
+    container_name: task-mgmt-mysql
+
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+      #These variables above configure MySQL database when the container is initialised.
+      #We will provide their actual values through a separate .env file.
+
+    ports:
+      - "3307:3306"
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+        #what is volumes?
+        #This is very important.
+        #Imagine we create 100 tasks in your application and then stop or remove the MySQL container.
+        #Without persistent storage, you risk losing your database data when the container is removed.
+        #The Docker volume mysql_data stores the database files outside the container's writable layer.
+      #Your data can therefore survive container recreation.
+
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    restart: unless-stopped
+
+
+  # Spring Boot Application Container
+  app:
+    build: .
+    container_name: task-mgmt-api
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}
+      #When you run Spring Boot directly from IntelliJ, localhost means your own computer.
+      #But when Spring Boot runs inside a Docker container:
+      #- localhost means the Spring Boot container itself.
+      #- mysql means the MySQL container, because mysql is its Compose service name.
+
+      #How container communication works ??
+
+
+      #Spring Boot app'n container
+      #Connects to hostname: mysql
+
+      #and then with the help of Docker network communicates with :
+
+      #MySQL container
+      #Port 3306
+      #Docker will override the DB_URL property using the environment variable.
+
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+
+# Persistent Database Storage
+volumes:
+  mysql_data:

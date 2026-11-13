@@ -19,6 +19,10 @@ target/
 *.iml
 *.ipr
 
+#Environment variables - never commit secrets
+#Your .env file is now ignored by Git for new, untracked files
+.env
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/

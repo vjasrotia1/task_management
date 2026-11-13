@@ -91,11 +91,16 @@ public class SecurityConfig {
                 (like CSRF protection, authentication, and authorization filters) tied to that chain
                  */
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**").permitAll()
+
                         .requestMatchers("/api/auth/**").permitAll()
+
                         .anyRequest().authenticated()
                 )
                 //generalised format: addFilterBefore(filter, class): Runs your filter before a standard filter.
-                        .addFilterBefore(
+                .addFilterBefore(
                         jwtAuthFilter,
                         UsernamePasswordAuthenticationFilter.class
                 );
@@ -103,6 +108,69 @@ public class SecurityConfig {
         return http.build();
     }
 }
+                /*
+what we're doing above?
+URL	Access
+/swagger-ui/**	--->Public
+/swagger-ui.html --->Public
+/v3/api-docs/** --->Public
+/api/auth/**	----> Public (as before)
+/api/tasks/**	---> Requires authentication and your existing authorization rules
+only the documetation endpoints are public
+
+after this-- rebuild and restart the application(since we are running thru docker so type   "docker compose up -d --build app" in terminal
+after this open a link -- http://localhost:8080/swagger-ui/index.html and u should be able to see swagger UI page-- which means Swagger UI is working
+
+till now we have configired: openAPI dependency, OpenAPIconfig.java, jwt bearer auth scheme,spring security access for swagger doc, docker rebuild and restart
+
+Now, we will Test JWT authentication through Swagger. now we will verify that Swagger can authenticate against your existing JWT security setup.
+
+first login for already existing user, copy JWT and then click on Authorise button at the top
+then test a protected endpoint e.g. get/api/tasks
+Then try a task belonging to that USER:get/api/tasks/{taskId}
+
+Step 1: Log in as the user you created
+In Swagger UI:
+1. Open your login endpoint (POST /api/auth/login).
+2. Click Try it out.
+3. Enter the email and password of the user you created in Docker MySQL.
+4. Click Execute.
+5. Copy the JWT token from the response.
+6. Click Authorize at the top and paste the token.
+
+Step 2: Create a task
+Find your task creation endpoint: POST/api/tasks
+click "try it out"
+and then try to test protected endpoint
+
+what this test just verified
+1. Swagger sends your JWT token.
+2. JwtAuthFilter identifies the logged-in user.
+3.TaskServiceImpl checks ownership before returning the task.
+
+later u can Verify ownership in the database (docker mysql db)  by writing the below sql query inside docker mysql db
+SELECT id, title, assigned_user_id
+FROM tasks; we can use Intellij terminal to write this query or we cn use IntelliJ Database Tool(connect IntelliJ's Database window to Docker MySQL(mysql db running inside docker) using
+            host - localhost
+            Port-3307
+            Databasetask_mgmt_api_db
+            user - task_user
+            Password- our .env password(Password for mysql db running inside docker)
+
+after this, let's test whether your ownership-based authorization works correctly through Swagger.
+Step 2: Test ownership restriction
+Now try accessing a task assigned to a different user while using the same USER token.
+Step 3: Test ADMIN access
+Log in using your ADMIN credentials, authorize Swagger with the ADMIN JWT token, and try accessing that same task.
+
+once these tests pass, it confirms your Swagger JWT integration and ownership-based authorization are working correctly.
+
+now we start phase 3 -Redis caching
+
+                 */
+
+
+
 
 /*
 public class SecurityConfig{
