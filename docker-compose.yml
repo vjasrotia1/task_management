@@ -1,4 +1,8 @@
-
+#It is recommended that we use both approaches at different stages.
+#1. for Daily development: Run Spring Boot through IntelliJ; and run MySQL and Redis through Docker.
+#2. for Integration testing: Start all three services using Docker Compose and verify they work together.
+#3. for Deployment preparation: we will Build and run the complete application(all services i.e. mysql,springboot appn,Redis etc) using Docker Compose.
+#4. for Kubernetes phase: we will Move towards a production-style container deployment.
 services:
 
   # MySQL Database Container
@@ -75,7 +79,23 @@ services:
 
     restart: unless-stopped
 
+#Redis is Fast in-memory cache. Instead of repeatedly fetching frequently requested data from MySQL, Redis can serve cached results.
+  #One important security point for our project: we have to be  careful when caching task retrieval methods because your API has USER/ADMIN access restrictions. We must not let a cached response bypass ownership checks.
+  redis:
+      image: redis:7-alpine
+      container_name: task-mgmt-redis
+      ports:
+        - "6379:6379"
+      healthcheck:
+        test: [ "CMD", "redis-cli", "ping" ]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+      restart: unless-stopped
+
 
 # Persistent Database Storage
 volumes:
   mysql_data:
+
+

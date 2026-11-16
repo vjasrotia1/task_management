@@ -4,6 +4,7 @@ import com.varun.taskmgmtapi.dto.TaskDto.CreateTaskRequest;
 import com.varun.taskmgmtapi.dto.TaskDto.TaskResponse;
 import com.varun.taskmgmtapi.dto.TaskDto.UpdateTaskRequest;
 import com.varun.taskmgmtapi.dto.TaskDto.UpdateTaskStatusRequest;
+import com.varun.taskmgmtapi.events.TaskCacheEvictionEvent;
 import com.varun.taskmgmtapi.exception.InvalidRoleException;
 import com.varun.taskmgmtapi.exception.ResourceNotFoundException;
 import com.varun.taskmgmtapi.exception.UserNotFoundException;
@@ -13,7 +14,9 @@ import com.varun.taskmgmtapi.models.TaskStatus;
 import com.varun.taskmgmtapi.models.User;
 import com.varun.taskmgmtapi.repository.TaskRepo;
 import com.varun.taskmgmtapi.repository.UserRepo;
+import com.varun.taskmgmtapi.service.TaskCacheService;
 import com.varun.taskmgmtapi.service.TaskService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -26,12 +29,18 @@ import java.util.Optional;
 import java.util.Set;
 
 @Service
+//@Service simply tell Spring to call the class's constructor
 public class TaskServiceImpl implements TaskService {
     private TaskRepo  taskRepo;
     private UserRepo userRepo;
-    public TaskServiceImpl(TaskRepo taskRepo, UserRepo userRepo) {
+    private final TaskCacheService taskCacheService;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public TaskServiceImpl(TaskRepo taskRepo, UserRepo userRepo, TaskCacheService taskCacheService, ApplicationEventPublisher eventPublisher) {
         this.taskRepo = taskRepo;
         this.userRepo=userRepo;
+        this.taskCacheService = taskCacheService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -76,21 +85,72 @@ public class TaskServiceImpl implements TaskService {
         return convertToResponse(task);
     }
 
+    /*
+    in case of caching: It is not  recommended  to simply add @Cacheable above this method:
+    because, on a cache hit, Spring can skip the method entirely, including the ownership check.
+    we have to make a change so that:
+    1. ownership is checked on every requst
+    2.The task response is retrieved from Redis when available.
+    3.MySQL is queried for the response only on a cache miss.
+
+    hence in TaskRepo, we have to add this mehtod:boolean existsByIdAndAssignedUser_Id(Long taskId, Long userId);
+    This lets us check whether the task belongs to the logged-in user without retrieving the complete task object.
+    e.g taskId=5 and userId=10 will return true and taskId=5 and userId=20 will return false
+    An ADMIN won't need this ownership restriction.
+    We'll create a separate class rather than putting @Cacheable in TaskServiceImpl.because Spring's caching uses proxies. Calling a cacheable method from another method in the same class can bypass the caching mechanism.
+     */
     @Override
     public TaskResponse getTasksById(Long taskId, Long currentUserId, boolean isAdmin) {
 
-        Task task=taskRepo.findById(taskId)
-                .orElseThrow(()->new ResourceNotFoundException("Task with id "+ taskId+ " not found"));
-
-        boolean isOwner= task.getAssignedUser()!=null && task.getAssignedUser().getId().equals(currentUserId);
-
-        if(!isOwner && !isAdmin){
-            throw new AccessDeniedException("You are not authorised to perform this action");
+        if (!isAdmin) {
+            boolean isOwner = taskRepo.existsByIdAndAssignedUser_Id(taskId, currentUserId);
+            if (!isOwner) {
+                if (!taskRepo.existsById(taskId)) {
+                    throw new ResourceNotFoundException(
+                            "Task with id " + taskId + " not found");
+                }
+                throw new AccessDeniedException(
+                        "You are not authorised to perform this action");
+            }
         }
-        return  convertToResponse(task) ;
+
+        else {
+            if (!taskRepo.existsById(taskId)) {
+                throw new ResourceNotFoundException(
+                        "Task with id " + taskId + " not found");
+            }
+        }
+        return taskCacheService.getTaskResponse(taskId);
+        /*
+        Why are we checking existsById() separately?
+Consider these scenarios:
+Scenario	Expected result
+USER requests own task	Allowed
+USER requests another user's task	403 Forbidden
+USER requests nonexistent task	404 Not Found
+ADMIN requests any existing task	Allowed
+ADMIN requests nonexistent task	404 Not Found
+
+We preserve these behaviors even though the task response is now cached.
+Step 8: Understand the new flow
+Every request:
+
+getTasksById()
+Check task ownership / existence in MySQL
+taskCacheService.getTaskResponse(taskId)
+Redis hit
+Return cached response
+Redis miss
+Fetch and cache response
+One important distinction: We are caching the task response, not the authorization decision. Authorization is checked on every request.
+
+after this, let's implement the next important part: Cache invalidation.
+
+         */
     }
 
     //this function is basically converting Task to TaskResponse
+    //this method converts a JPA Task entity into a TaskResponse DTO
     private TaskResponse convertToResponse(Task task) {
         //koi bhi Task Obj ko TaskResponse obj me kasie convert kare?
         Long assignedUserId=null;
@@ -147,6 +207,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
+    @Transactional
     public TaskResponse UpdateTask(Long taskId, UpdateTaskRequest updateTaskRequest, Long currentUserId, boolean isAdmin) {
 
         Task task=taskRepo.findById(taskId)
@@ -167,6 +228,18 @@ public class TaskServiceImpl implements TaskService {
         task.setStatus(updateTaskRequest.getStatus());
 
         taskRepo.save(task);
+
+        // Remove old cached response
+        //taskCacheService.evictTaskCache(taskId);
+        eventPublisher.publishEvent(new TaskCacheEvictionEvent(taskId));
+        //The listener will take care of Redis eviction after the transaction commits.
+        //this is production-level Spring concept: transaction synchronization through application events.
+
+        //complete flow- Transaction-aware cache eviction changes
+//1. taskServiceImpl(updates or deletes task in Mysql and publishes the event)
+        //2.TaskCacheEvictionEvent(carries taskId and waits for successfull commit)
+        //3. TaskCacheEvictionListner(handles event after commit)
+        //4. RedistaskCacheServiceImpl evicts task from redis
         return convertToResponse(task);
     }
 
@@ -201,6 +274,30 @@ public class TaskServiceImpl implements TaskService {
                         new ResourceNotFoundException("Task with id: " + id + " not found!"));
 
         taskRepo.delete(task);
+
+        // Remove corresponding entry from Redis
+        //taskCacheService.evictTaskCache(id);
+        eventPublisher.publishEvent(new TaskCacheEvictionEvent(id));
+        //The listener will take care of Redis eviction after the transaction commits.
+
+        /*
+        our current eviction calls happen after repository operations, but that does not necessarily mean the database transaction has committed.
+        For example, if a transaction later rolls back, the cache could already have been evicted.
+        That's not necessarily incorrect, but we should make cache eviction transaction-aware.
+
+        so we will evict the Redis entry only after the MySQL transaction successfully commits.
+
+        why it matters?
+        Imagine this sequence:
+1. MySQL updates a task.
+2. Redis cache is evicted.
+3. Something goes wrong before the database transaction commits.
+4. MySQL rolls back the update.
+
+so, Now Redis has lost its entry even though the database update failed.it creates unnecessary cache misses
+can avoid that by using Spring's beforeInvocation = false (the default) together with transaction-aware eviction after commit.
+We'll implement this using Spring's @TransactionalEventListener
+         */
     }
 
     @Override
@@ -227,6 +324,7 @@ public class TaskServiceImpl implements TaskService {
     // If everything succeeds, it will Commit (permanently save) the changes.
 
     //assign task to be used as task reassignment endpoint
+    //When a task is reassigned to another user, its cached TaskResponse becomes outdated because it contains the assigned user's ID and name.
     public TaskResponse assignTask(Long taskId, Long userId) {
         Task task=taskRepo.findById(taskId)
                 .orElseThrow(()->
@@ -246,6 +344,7 @@ public class TaskServiceImpl implements TaskService {
         //This is called dirty checking.
         //u can still keep it, but for a managed entity loaded inside the transaction, it isn't strictly necessary
         taskRepo.save(task);
+        eventPublisher.publishEvent(new TaskCacheEvictionEvent(taskId));
 
         return convertToResponse(task);
         /*
@@ -315,7 +414,16 @@ If any properties differ, the entity is marked "dirty," and Hibernate automatica
         task.setStatus(requestedStatus);
         //updating status should update UpdatedAt Timestamp
         task.setUpdatedAt(LocalDateTime.now());
+        //save in mySql
         taskRepo.save(task);
+
+        //Evict old Redis cache
+        //taskCacheService.evictTaskCache(taskId);
+        eventPublisher.publishEvent(new TaskCacheEvictionEvent(taskId));
+        //our cache gets correctly invalidated when a task's status changes.
+        // The next GET fetches the latest data from MySQL and stores it in Redis again.
+        //The listener will take care of Redis eviction after the transaction commits.
+
         return convertToResponse(task);
 
         /*

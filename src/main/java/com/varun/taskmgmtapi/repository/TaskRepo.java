@@ -29,6 +29,12 @@ public interface TaskRepo extends JpaRepository<Task, Long> {
     // and give me back just one specific page of those tasks along with the pagination information
     Page<Task> findByAssignedUserId(Long userId, Pageable pageable);
 
+    boolean existsByIdAndAssignedUser_Id(Long taskId, Long userId);
+    //Spring Data JPA automatically generates the database query from the method name.
+    //It checks whether:
+    //- A task exists with the given taskId.
+    //- That task is assigned to the given userId
+
 }
 /*
 Page<Task> (The Result): "I want the results wrapped inside a Page container.

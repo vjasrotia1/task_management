@@ -1,8 +1,24 @@
 package com.varun.taskmgmtapi.config;
 
-//beans are created in securityconfig package
+//beans are created in Security config package
 //BcryptPasswordEncoder is a part of Spring Security
 //Your JWT filter is supposed to put the authentication object into SecurityContextHolder after validating the JWT
+/*
+A @Configuration class is essential in several key scenarios:
+• Third-Party Libraries: You cannot open up external library classes (like ObjectMapper from Jackson, RestTemplate, or a database DataSource) and add @Component to them because you don't own their source code. A @Configuration class lets you instantiate and configure those external objects inside a @Bean method so Spring can manage them.
+• Complex Initialization Logic: Stereotype annotations like @Service simply tell Spring to call the class's constructor. If an object requires conditional logic, environment-specific settings, or multiple setup steps before it is ready to use, you need a @Bean method inside a @Configuration class to write that custom Java setup code.
+• Multiple Beans of the Same Type: You can only annotate a single class once with @Component. Inside a @Configuration class, you can define multiple @Bean methods that return different instances of the exact same class (for example, connecting to two different databases using two separate DataSource beans).
+• Decoupling Configuration from Business Logic: Putting setup logic in @Configuration keeps your @Service and @Component classes clean and focused purely on business rules, without mixing in framework-specific wiring code.
+
+Quick Comparison
+
+
+Scenario	Best Choice	Why?
+Your own business classes	@Service, @Repository, @Component ---> why? ---> Quick, automatic classpath scanning with minimal boilerplate.
+External library classes	@Configuration + @Bean	You cannot modify external bytecode to add annotations.
+Complex object setup	@Configuration + @Bean	Allows custom Java code, if/else logic, and manual parameter passing.
+
+ */
 import com.varun.taskmgmtapi.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +30,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+//@config--> marks a Java class as a source of bean definitions(contains methods marked with @Bean where method name acts as bean ID and returned obj is managed by spring) for the Spring IoC container
+//The Spring IoC (Inversion of Control) Container is the core engine of the Spring Framework responsible for creating, configuring, and managing the entire lifecycle of your application's objects (called beans).
+//Normally in Java, your code controls object creation using the new keyword. With Inversion of Control, you hand that responsibility over to Spring. The container reads your configuration, creates the objects, injects their required dependencies (via Dependency Injection), and destroys them when the app shuts down.
+// In practice, this container is represented by interfaces like BeanFactory or the more commonly used ApplicationContext.
 @EnableMethodSecurity
 //@EnableMethodSecurity -- helps Spring to process @PreAuthorise
 //@EnableMethodSecurity is a configuration annotation. It enables (method-level security) feature throughout your application.

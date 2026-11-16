@@ -112,6 +112,19 @@
             <version>3.2.0</version>
         </dependency>
 
+        <!-- Redis connection and data access -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Spring Cache abstraction -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+
+
     </dependencies>
 
     <build>

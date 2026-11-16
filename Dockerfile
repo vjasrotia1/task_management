@@ -78,3 +78,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 # $stage 2: uses only the java runtime to run that JAR
 #we dont need maven inside the final running container,this helps keep runtime image smaller
 #We are using -DskipTests for this initial packaging step because we have already been working on the unit tests. We'll run tests separately in our CI/CD phase.
+
+
+#after docker+docker compose and OpenAPI+swagger+JWT authentication, Our first goal: get Redis running in Docker and confirm that your Spring Boot application can connect to it.
+#why redis?Redis can store frequently accessed results in memory, reducing repeated database queries.else our appn will always query Mysql
+
