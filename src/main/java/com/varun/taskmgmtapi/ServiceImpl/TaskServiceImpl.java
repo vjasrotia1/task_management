@@ -120,6 +120,10 @@ public class TaskServiceImpl implements TaskService {
                         "Task with id " + taskId + " not found");
             }
         }
+        System.out.println("TaskCacheService bean class: "
+                + taskCacheService.getClass().getName());
+
+        System.out.println("Calling RedisTaskCacheServiceImpl...");
         return taskCacheService.getTaskResponse(taskId);
         /*
         Why are we checking existsById() separately?
@@ -345,7 +349,6 @@ We'll implement this using Spring's @TransactionalEventListener
         //u can still keep it, but for a managed entity loaded inside the transaction, it isn't strictly necessary
         taskRepo.save(task);
         eventPublisher.publishEvent(new TaskCacheEvictionEvent(taskId));
-
         return convertToResponse(task);
         /*
         Hibernate dirty checking is an automatic optimization mechanism that tracks changes made to managed entities and synchronizes them with the database without requiring you to explicitly call update() or save() statements.

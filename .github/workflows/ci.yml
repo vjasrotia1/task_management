@@ -1,0 +1,55 @@
+#What this workflow does:
+#- on: Defines when the workflow runs.
+#- checkout: Downloads your GitHub repository into the runner.
+#- setup-java: Installs Java 17.
+#- cache: maven: Caches Maven dependencies to speed up future builds.
+#- mvn clean test: Compiles your code and runs your tests.
+
+
+name: Task Management API CI
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and run tests
+        run: mvn -B clean test
+
+#Understand the workflow
+#Configuration	Purpose
+#push	        Runs CI whenever you push code
+#pull_request	Runs CI when a pull request is created or updated
+#ubuntu-latest	GitHub provides a Linux machine
+#setup-java@v4	Installs Java 17
+#mvn clean test	Compiles the application and runs test
+
+#File	Purpose
+  #.github/workflows/ci.yml	       GitHub Actions CI
+  #pom.xml	                       H2 test dependency
+  #RedisTaskCacheServiceImpl.java	Redis caching
+  #TaskServiceImpl.java	           Cache integration and task operations
+  #CacheConfig.java	                Redis cache configuration
+  #application.properties	       Main application configuration
+  #TaskServiceImplTest.java	        Updated unit tests
+  #TaskMgmtApiApplicationTests.java	Test profile activation
+  #application-test.properties	    H2 and test JWT configuration

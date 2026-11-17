@@ -1,6 +1,8 @@
 package com.varun.taskmgmtapi.config;
 
 import com.varun.taskmgmtapi.dto.TaskDto.TaskResponse;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,6 +10,8 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.time.Duration;
 
 /*
 caching annotations
@@ -52,18 +56,41 @@ public class CacheConfig {
 
     @Bean
     public RedisCacheConfiguration cacheConfiguration() {
+
     JacksonJsonRedisSerializer<TaskResponse> serializer =
             new JacksonJsonRedisSerializer<>(TaskResponse.class);
 
         return RedisCacheConfiguration.defaultCacheConfig()
+                //TTL means Time To Live—how long a cached entry remains in Redis before Redis automatically expires it.
+                //Add a TTL(time to live) configuration using entryTtl(Duration.ofMinutes(10)).
+                //it limits how long stale data can remain if an invalidation event is missed.
+                //TTL is a backup mechanism, not a replacement for the cache eviction events we implemented
+                //It means that -->Every newly cached task entry will automatically expire after 10 minutes, unless it is evicted earlier by one of our invalidation events.
+                .entryTtl(Duration.ofMinutes(10))
+
                 .serializeKeysWith(
             RedisSerializationContext.SerializationPair
-                    .fromSerializer(new StringRedisSerializer())
-            )
+                    .fromSerializer(new StringRedisSerializer()))
+
             .serializeValuesWith(
             RedisSerializationContext.SerializationPair
-                    .fromSerializer(serializer)
-                );
+                    .fromSerializer(serializer));
+    }
+
+    @Bean
+    public CommandLineRunner checkCacheManager(CacheManager cacheManager) {
+        return args -> {
+            System.out.println("==================================");
+            System.out.println("CACHE MANAGER: "
+                    + cacheManager.getClass().getName());
+            System.out.println("==================================");
+
+            System.out.println("Available caches: "
+                    + cacheManager.getCacheNames());
+
+            System.out.println("Tasks cache exists: "
+                    + (cacheManager.getCache("tasks") != null));
+        };
     }
 }
 

@@ -34,6 +34,7 @@ public class RedisTaskCacheServiceImpl implements TaskCacheService {
     @Cacheable(value = "tasks", key = "#taskId")
     //cacheable --> Fetch from Redis or MySQL and cache the response.
     public TaskResponse getTaskResponse(Long taskId) {
+        System.out.println("RedisTaskCacheServiceImpl method invoked");
 
         System.out.println("Fetching task from MySQL for taskId: " + taskId );
 
@@ -46,7 +47,6 @@ public class RedisTaskCacheServiceImpl implements TaskCacheService {
         return convertToResponse(task);
         //- No "Fetching task from MySQL" message from the cacheable method
         // if the existence check rejects the request before the cache service is called.
-
     }
 
     @CacheEvict(value = "tasks", key = "#taskId")

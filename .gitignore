@@ -1,3 +1,5 @@
+#Before pushing to GitHub, rotate the database password and JWT secret that were previously exposed. Never share the contents of .env.
+
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar

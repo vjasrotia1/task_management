@@ -12,6 +12,7 @@ import com.varun.taskmgmtapi.models.TaskStatus;
 import com.varun.taskmgmtapi.models.User;
 import com.varun.taskmgmtapi.repository.TaskRepo;
 import com.varun.taskmgmtapi.repository.UserRepo;
+import com.varun.taskmgmtapi.service.TaskCacheService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDate;
@@ -34,6 +36,15 @@ import static org.mockito.Mockito.*;
 //Mockito creates mock objects for these existing interfaces.
 //@InjectMocks creates the real service, while @Mock supplies the substitute dependencies that the service receives through its constructor.
 
+
+//Maven doesn't automatically receive the database environment variables configured in your IntelliJ Run Configuration.
+//The clean solution is to use an H2 in-memory database for testing, while keeping MySQL for your actual application.
+//Why H2?
+//- Your actual application continues using MySQL.
+//- Unit and application-context tests can use a temporary in-memory database.
+//- GitHub Actions won't need your personal MySQL credentials.
+//- No need to run MySQL just to execute tests.
+//then, Create the test database configuration
 
 /*
 mockito creates Mock obj and uses existing constructor to pass these Mock objs into real service
@@ -76,6 +87,12 @@ public class TaskServiceImplTest {
     //@Mock cretes mock of TaskRepo
     //TaskRepo mockTaskRepo=mock(TaskRepo.class)
     private TaskRepo taskRepo;
+
+    @Mock
+    private TaskCacheService taskCacheService;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     //Mockito instantiates this and injects the mock repository(created above) in its constructor
@@ -222,106 +239,227 @@ public class TaskServiceImplTest {
         // because, we should never save a task if its assigned user doesnot exist
     }
 
+//    @Test
+//    //admin access any task
+//    void getTaskById_whenUserIsAdmin_returnTaskResponse(){
+//        //arrange
+//
+//        //create a task
+//        Task task=new Task();
+//        task.setId(1L);
+//        task.setTitle("learn Python and react");
+//        task.setDescription("learn basics of python and react and create project");
+//        //configure the mock repo
+//        when(taskRepo.findById(1L)).thenReturn(Optional.of(task));
+//
+//        //act-call actual service's method
+//        TaskResponse result=taskServiceImpl.getTasksById(1L,10L,true);
+//
+//        //assert
+//        //before checking the ID, verify that result is not null
+//        assertNotNull(result);
+//        assertEquals(1L,result.getId());
+//        assertEquals("learn Python and react", result.getTitle());
+//        assertEquals("learn basics of python and react and create project", result.getDescription());
+//        //verify
+//        verify(taskRepo).findById(1L);
+//        /*
+//        why we are not verifying whether convertToResponse() was called or not
+//        because, convertToResponse() is a private method inside TaskServiceImpl.
+//        Mockito's normal verify() mechanism verifies interactions with mock objects.
+//        Your convertToResponse() method is part of the real service object, not a mock dependency.
+//        Therefore, we cant simply write : verify(taskServiceImpl).convertToResponse(task);
+//
+//        instead, Test the output produced by convertToResponse() indirectly. as mentioned above like title, description etc
+//        Because getTasksById() calls convertToResponse() and returns its result.
+//        If the conversion is incorrect, these assertions will catch it.
+//         */
+//    }
+
     @Test
-    //admin access any task
-    void getTaskById_whenUserIsAdmin_returnTaskResponse(){
-        //arrange
+    void getTaskById_whenUserIsAdmin_returnTaskResponse() {
 
-        //create a task
-        Task task=new Task();
-        task.setId(1L);
-        task.setTitle("learn Python and react");
-        task.setDescription("learn basics of python and react and create project");
-        //configure the mock repo
-        when(taskRepo.findById(1L)).thenReturn(Optional.of(task));
+        // Arrange
+        TaskResponse expectedResponse = new TaskResponse(
+                1L,
+                "learn Python and react",
+                "learn basics of python and react and create project",
+                TaskStatus.TODO,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
 
-        //act-call actual service's method
-        TaskResponse result=taskServiceImpl.getTasksById(1L,10L,true);
+        when(taskRepo.existsById(1L)).thenReturn(true);
 
-        //assert
-        //before checking the ID, verify that result is not null
+        when(taskCacheService.getTaskResponse(1L))
+                .thenReturn(expectedResponse);
+
+        // Act
+        TaskResponse result = taskServiceImpl.getTasksById(1L, 10L, true);
+
+        // Assert
         assertNotNull(result);
-        assertEquals(1L,result.getId());
+        assertEquals(1L, result.getId());
         assertEquals("learn Python and react", result.getTitle());
-        assertEquals("learn basics of python and react and create project", result.getDescription());
-        //verify
-        verify(taskRepo).findById(1L);
-        /*
-        why we are not verifying whether convertToResponse() was called or not
-        because, convertToResponse() is a private method inside TaskServiceImpl.
-        Mockito's normal verify() mechanism verifies interactions with mock objects.
-        Your convertToResponse() method is part of the real service object, not a mock dependency.
-        Therefore, we cant simply write : verify(taskServiceImpl).convertToResponse(task);
+        assertEquals(
+                "learn basics of python and react and create project",
+                result.getDescription()
+        );
 
-        instead, Test the output produced by convertToResponse() indirectly. as mentioned above like title, description etc
-        Because getTasksById() calls convertToResponse() and returns its result.
-        If the conversion is incorrect, these assertions will catch it.
-         */
+        // Verify
+        verify(taskRepo).existsById(1L);
+        verify(taskCacheService).getTaskResponse(1L);
     }
 
+//    @Test
+//    //user access own task
+//    void getTaskById_whenUserIsNotAdminButIsOwnerOfTask_returnTaskResponse(){
+//
+//        User currentUser = new User();
+//        currentUser.setId(10L);
+//        currentUser.setName("varun");
+//
+//        Task task=new Task();
+//        task.setId(2L);
+//        task.setTitle("learn HLD");
+//        task.setDescription("HLD is required for SDE2 and above roles");
+//        task.setAssignedUser(currentUser);
+//
+//
+//        when(taskRepo.findById(2L)).thenReturn(Optional.of(task));
+//
+//        TaskResponse result=taskServiceImpl.getTasksById(2L,10L,false);
+//
+//        assertNotNull(result);
+//        assertEquals(2L,result.getId());
+//        assertEquals("learn HLD", result.getTitle());
+//        assertEquals("HLD is required for SDE2 and above roles", result.getDescription());
+//        assertEquals(10L,result.getAssignedUserId());
+//
+//        verify(taskRepo).findById(2L);
+//    }
+
     @Test
-    //user access own task
-    void getTaskById_whenUserIsNotAdminButIsOwnerOfTask_returnTaskResponse(){
+    void getTaskById_whenUserIsNotAdminButIsOwnerOfTask_returnTaskResponse() {
 
-        User currentUser = new User();
-        currentUser.setId(10L);
-        currentUser.setName("varun");
+        // Arrange
+        TaskResponse expectedResponse = new TaskResponse(
+                2L,
+                "learn HLD",
+                "HLD is required for SDE2 and above roles",
+                TaskStatus.TODO,
+                null,
+                10L,
+                "varun",
+                null,
+                null
+        );
 
-        Task task=new Task();
-        task.setId(2L);
-        task.setTitle("learn HLD");
-        task.setDescription("HLD is required for SDE2 and above roles");
-        task.setAssignedUser(currentUser);
+        when(taskRepo.existsByIdAndAssignedUser_Id(2L, 10L))
+                .thenReturn(true);
 
+        when(taskCacheService.getTaskResponse(2L))
+                .thenReturn(expectedResponse);
 
-        when(taskRepo.findById(2L)).thenReturn(Optional.of(task));
+        // Act
+        TaskResponse result = taskServiceImpl.getTasksById(2L, 10L, false);
 
-        TaskResponse result=taskServiceImpl.getTasksById(2L,10L,false);
-
+        // Assert
         assertNotNull(result);
-        assertEquals(2L,result.getId());
+        assertEquals(2L, result.getId());
         assertEquals("learn HLD", result.getTitle());
-        assertEquals("HLD is required for SDE2 and above roles", result.getDescription());
-        assertEquals(10L,result.getAssignedUserId());
+        assertEquals(
+                "HLD is required for SDE2 and above roles",
+                result.getDescription()
+        );
+        assertEquals(10L, result.getAssignedUserId());
 
-        verify(taskRepo).findById(2L);
+        // Verify
+        verify(taskRepo).existsByIdAndAssignedUser_Id(2L, 10L);
+        verify(taskCacheService).getTaskResponse(2L);
     }
 
+//    @Test
+//    void getTaskById_whenUserTriesToGetTaskofAnotherUser_throwException(){
+//
+//        User currentUser = new User();
+//        currentUser.setId(10L);
+//        currentUser.setName("varun");
+//
+//        User assignedUser = new User();
+//        assignedUser.setId(20L);
+//
+//        Task task=new Task();
+//        task.setId(3L);
+//        task.setTitle("learn data engg");
+//        task.setDescription("data engg is required for SDE2 roles");
+//        task.setAssignedUser(assignedUser);
+//
+//        when(taskRepo.findById(3L)).thenReturn(Optional.of(task));
+//
+//        assertThrows(AccessDeniedException.class,
+//                ()-> taskServiceImpl.getTasksById(3L,10L,false));
+//
+//        verify(taskRepo).findById(3L);
+//    }
+
     @Test
-    void getTaskById_whenUserTriesToGetTaskofAnotherUser_throwException(){
+    void getTaskById_whenUserTriesToGetTaskofAnotherUser_throwException() {
 
-        User currentUser = new User();
-        currentUser.setId(10L);
-        currentUser.setName("varun");
+        // Arrange
+        when(taskRepo.existsByIdAndAssignedUser_Id(3L, 10L))
+                .thenReturn(false);
 
-        User assignedUser = new User();
-        assignedUser.setId(20L);
+        when(taskRepo.existsById(3L))
+                .thenReturn(true);
 
-        Task task=new Task();
-        task.setId(3L);
-        task.setTitle("learn data engg");
-        task.setDescription("data engg is required for SDE2 roles");
-        task.setAssignedUser(assignedUser);
+        // Act and Assert
+        assertThrows(
+                AccessDeniedException.class,
+                () -> taskServiceImpl.getTasksById(3L, 10L, false)
+        );
 
-        when(taskRepo.findById(3L)).thenReturn(Optional.of(task));
+        // Verify
+        verify(taskRepo).existsByIdAndAssignedUser_Id(3L, 10L);
+        verify(taskRepo).existsById(3L);
 
-        assertThrows(AccessDeniedException.class,
-                ()-> taskServiceImpl.getTasksById(3L,10L,false));
-
-        verify(taskRepo).findById(3L);
+        // Cache should not be accessed when ownership check fails
+        verify(taskCacheService, never()).getTaskResponse(3L);
     }
 
+//    @Test
+//    void getTaskById_whenTaskDoesNotExist_throwException(){
+//        //arrange
+//        when(taskRepo.findById(5L)).thenReturn(Optional.empty());
+//
+//        //act and assert
+//        assertThrows(ResourceNotFoundException.class,
+//                ()-> taskServiceImpl.getTasksById(5L,10L,true));
+//
+//        //verify
+//        verify(taskRepo).findById(5L);
+//    }
+
     @Test
-    void getTaskById_whenTaskDoesNotExist_throwException(){
-        //arrange
-        when(taskRepo.findById(5L)).thenReturn(Optional.empty());
+    void getTaskById_whenTaskDoesNotExist_throwException() {
 
-        //act and assert
-        assertThrows(ResourceNotFoundException.class,
-                ()-> taskServiceImpl.getTasksById(5L,10L,true));
+        // Arrange
+        when(taskRepo.existsById(5L)).thenReturn(false);
 
-        //verify
-        verify(taskRepo).findById(5L);
+        // Act and Assert
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> taskServiceImpl.getTasksById(5L, 10L, true)
+        );
+
+        // Verify
+        verify(taskRepo).existsById(5L);
+
+        // Cache should not be accessed for a missing task
+        verify(taskCacheService, never()).getTaskResponse(5L);
     }
 
     @Test
