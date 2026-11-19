@@ -1,0 +1,53 @@
+
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-mgmt-api
+  namespace: task-mgmt
+spec:
+  type: ClusterIP
+  selector:
+    app: task-mgmt-api
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+
+
+#What does this do?
+#- ClusterIP: Gives the Service a stable internal IP within Kubernetes.
+#- selector: Connects the Service to Pods labelled app: task-mgmt-api.
+#- port: The port exposed by the Service.
+#- targetPort: The port inside your Spring Boot container.
+
+# "kubectl get services"
+#NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+#task-mgmt-api   ClusterIP   10.96.247.109   <none>        8080/TCP   47s
+#meaning- Field	Meaning
+#task-mgmt-api	Service name
+#ClusterIP	Internal Kubernetes Service
+#10.96.247.109	Stable internal IP
+#8080/TCP	Service listens on port 8080
+#EXTERNAL-IP <none>	Not directly exposed outside Kubernetes
+#We'll use port forwarding to access the Kubernetes application from your Mac.
+
+#Your Mac browser
+#
+#localhost:8081
+#
+#Port forwarding
+#
+#Kubernetes Service
+#
+#task-mgmt-api : 8080
+#
+#Service selects the application Pod
+#
+#Spring Boot Pod
+#
+#task-mgmt-api : 8080
+#Running
+
+#our login and task APIs are working through Kubernetes. This confirms that the Kubernetes-hosted springboot application can communicate with MySQL and serve real API requests.

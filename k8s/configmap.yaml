@@ -1,0 +1,18 @@
+
+#A ConfigMap stores non-sensitive application configuration. Kubernetes will make these values available to your Spring Boot Pod as environment variables.
+
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: task-mgmt-config
+  namespace: task-mgmt
+
+data:
+  DB_URL: "jdbc:mysql://host.docker.internal:3307/task_mgmt_api_db"
+  DB_USERNAME: "task_user"
+  REDIS_HOST: "host.docker.internal"
+  REDIS_PORT: "6379"
+  JWT_EXPIRATION: "3600000"
+
+  #

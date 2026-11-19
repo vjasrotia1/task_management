@@ -1,0 +1,144 @@
+
+
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: task-mgmt-api
+  namespace: task-mgmt
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: task-mgmt-api
+
+  template:
+    metadata:
+      labels:
+        app: task-mgmt-api
+
+    spec:
+      containers:
+        - name: task-mgmt-api
+          image: task-mgmt-api:1.0
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8080
+
+          envFrom:
+            - configMapRef:
+                name: task-mgmt-config
+
+            - secretRef:
+                name: task-mgmt-secret
+                #Let's configure basic CPU and memory allocation.
+                #Setting	Meaning
+                  #CPU request 250m	--> Kubernetes reserves 0.25 CPU core for scheduling
+                  #Memory request 512Mi	--> Kubernetes uses this when deciding whether the node has enough memory
+                #CPU limit 1000--> Container can use up to 1 CPU core
+                #Memory limit 1Gi--> Container is limited to 1 GiB of memory
+
+                #configure basic CPU and memory allocation. validate the deployment(dry run validation), resource config apply, then verify the rollout, verifty resource allocation(kubectl get pods)
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+
+
+          startupProbe:
+                  tcpSocket:
+                    port: 8080
+                  periodSeconds: 10
+                  failureThreshold: 30
+
+          livenessProbe:
+                  tcpSocket:
+                    port: 8080
+                  periodSeconds: 10
+                  failureThreshold: 3
+
+          readinessProbe:
+                  tcpSocket:
+                    port: 8080
+                  periodSeconds: 5
+                  failureThreshold: 3
+              #Maintain the indentation exactly as shown. These three probes must be inside the container definition, at the same indentation level as image, ports, and envFrom.
+
+
+
+
+
+
+  #Configuration	Meaning
+#replicas: 1	Run one application instance
+#image	Use the Docker image we built
+#imagePullPolicy: Never	Use the local image; don't download it
+#containerPort: 8080	Spring Boot listens on port 8080
+#configMapRef	Load non-sensitive environment variables
+#secretRef	Load passwords and JWT secret
+
+
+#Important: This Deployment references your existing ConfigMap and Secret. It does not start MySQL or Redis; those remain in their existing Docker containers.
+#Verify database name and username, "grep -E '^(MYSQL_DATABASE|MYSQL_USER)=' .env"
+#Both values should match our ConfigMap exactly.
+
+#Validate your Kubernetes YAML files
+
+#"command - kubectl apply -f k8s/deployment.yaml" and output is : deployment.apps/task-mgmt-api created"
+#it tells k8s to :
+#Find your local Docker image task-mgmt-api:1.0
+#Create a Pod using that image.
+#Inject configuration from your ConfigMap and Secret.
+#Maintain one running application replica.
+
+#We told Kubernetes:
+#Use the image already available locally. Do not download it from Docker Hub.
+#However, if Kubernetes cannot currently find that image in its container runtime.
+#Although docker images showed the image on your Mac, that doesn't necessarily mean Kubernetes can see it.
+#inpsect the error : "kubectl describe pod task-mgmt-api-5888b87cdb-xjdxr"
+
+  #"docker images" confirms that the image exists in Docker's image store.
+  #Kubernetes runs containers through its own container runtime, which may not have access to that image
+  #Kubernetes cluster is already running through Docker Desktop.
+  #there are 2 types of Kubernetes cluster provisioning method : kind and kubeadm
+  #A kind cluster runs Kubernetes nodes inside Docker containers.
+  # Each node has its own containerd image store, so an image built on your Mac must be explicitly loaded into the Kubernetes node.
+  #First, let's identify the Docker container running your Kubernetes node.
+
+  #our output confirms that Docker Desktop is running a kind-based Kubernetes cluster, and we can now see its node container:
+  #desktop-control-plane — kindest/node:v1.36.1
+  #The issue is that your Docker image exists in Docker's image store, but Kubernetes' kind node has its own container image store. We need to transfer task-mgmt-api:1.0 into that node.
+  #Step 1: Install kind CLI
+  #after kind installtion : Your existing Kubernetes cluster is named desktop, so we can load the Docker image directly into it.
+  #Load your Spring Boot image into Kubernetes
+  #"Load your Spring Boot image into Kubernetes. this command do?
+
+  #task-mgmt-api:1.0 — your locally built Spring Boot Docker image.
+  #--name desktop — tells kind which Kubernetes cluster should receive the image.
+  #The image is transferred into the cluster's node so Kubernetes can use it without pulling it from Docker Hub.
+  #NAME                            READY   STATUS    RESTARTS      AGE
+  #task-mgmt-api-585d85fbb-s9kqh   1/1     Running   1 (15s ago)   115s
+  #Excellent! Your Kubernetes Deployment has successfully started the new application Pod.
+  #Spring Boot runs inside a Kubernetes Pod.and can communicate with Mysql(running inside docker container) thru host.docker.internal
+
+
+  #3. Local Kubernetes milestone completed
+  #We've covered the critical deployment concepts:
+  #- Docker image creation
+  #- Kubernetes namespace
+  #- Deployment and Pods
+  #- ConfigMaps and Secrets
+  #- Kubernetes Service
+  #- Port forwarding
+  #- Startup, Liveness and Readiness probes
+  #- CPU and memory requests and limits
+  #- MySQL connectivity
+  #- API testing through Swagger
+  #One qualification: MySQL and Redis are still running as Docker containers outside Kubernetes. Your application is deployed in Kubernetes.

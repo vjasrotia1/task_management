@@ -5,7 +5,42 @@
 #- cache: maven: Caches Maven dependencies to speed up future builds.
 #- mvn clean test: Compiles your code and runs your tests.
 
+#CI success means "github actions pipeline is now passing or in other words - our project now automatically builds and runs tests when we push changes to Github or open a pull request
+#CI is complete, but automated deployment (CD) is not yet configured.
+#next, phase 5: will be kubernetes(k8s)
+#Our goal is eventually to move Spring Boot into a Kubernetes Pod. currently Springboot is running on IntelliJ · localhost:8080 and mysql and Redis are running in Docker container
+#Kubernetes
+#Cluster running
+#Docker Desktop · Not yet hosting your application
 
+#The target architecture will be:
+#- Spring Boot → Kubernetes Pod
+#- MySQL → Kubernetes Pod (initially, for learning)
+#- Redis → Kubernetes Pod
+#- Kubernetes Services → internal communication between these components.
+
+#set default namespace in k8s as task-mgmt to avoid typing -n task-mgmt with every k8s command.
+#verify it using "kubectl config view --minify | grep namespace"
+
+#current setup
+#Component	Where it runs	Status
+#Spring Boot API	IntelliJ on Mac	    Running separately
+#MySQL 8.4	Docker container	        Healthy
+#Redis 7	Docker container	        Healthy
+#Welcome to Docker	Docker container	Running
+#Kubernetes	        Docker Desktop	            Running
+
+#it is recommended that we reuse our existing MySQL and Redis containers initially, rather than immediately creating new database containers inside Kubernetes.
+#Why?
+#- Your existing MySQL may contain task-management data that we should preserve.
+#- Running duplicate MySQL and Redis instances consumes additional memory.
+#- We can first learn Kubernetes Deployments, Pods, Services, ConfigMaps and Secrets with your existing infrastructure.
+
+#Our initial target will be:
+#- Spring Boot API → Kubernetes Pod.
+#- MySQL → existing Docker container, accessed from Kubernetes.
+#- Redis → existing Docker container, accessed from Kubernetes., Later, we can migrate MySQL and Redis into Kubernetes if needed.
+#Now we'll build a Docker image that Kubernetes can use to create your Spring Boot application Pod.
 name: Task Management API CI
 
 on:

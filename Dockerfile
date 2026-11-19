@@ -1,5 +1,6 @@
 
-#Dockerfile contains build instructions
+#Dockerfile contains build instructions, Dockerfile has instructions for building your application image.Docker will package your Spring Boot application into a Docker image.
+#pom.xml — Maven project configuration.
 # we'll validate everything before building or starting the containers.
 #before validating docker configurations, Make sure the terminal is currently inside project root directory, task-mgmt-api
 #This is important because Docker needs to find your Dockerfile, docker-compose.yml and .env files.
@@ -35,6 +36,49 @@
 #mysql container running and healthy, springboot container running successfully, application connected to Docker mysql, API auth behaviour verified
 
 #move to Phase 2: OpenAPI + Swagger UI with JWT integration. This will let us explore and test our APIs directly in the browser without Postman.
+
+#Build your Spring Boot Docker image
+ #Now we'll build a Docker image that Kubernetes can use to create your Spring Boot application Pod.
+ #Important: This does not start a container or stop your IntelliJ application. It only creates the image
+#docker build -t task-mgmt-api:1.0 .- docker reads docker file, maven downlaods dependecies, springboot appln is packaeged to JAR, docker creates the image
+
+#Once SB appn is packaged into a Docker Image, A few important things happened:
+ #1. mvn dependency:go-offline — Maven downloaded the required dependencies.
+ #2. mvn clean package -DskipTests — Your application compiled and the JAR was created.
+ #3. COPY --from=build ... — The JAR was copied into the lightweight Java runtime image.
+ #4. naming to ... task-mgmt-api:1.0 — Docker created your image.
+#verify this SB docker image and after verification, we'll use this image in your Kubernetes Deployment.
+#Remember, Docker Desktop Kubernetes can use this locally built image without pushing it to Docker Hub.
+#then after checkign that this image can be seen by K8S, then create your first Kubernetes Deployment for the Task Management API using task-mgmt-api:1.0 and imagePullPolicy: Never so Kubernetes uses the local image rather than trying to download it from Docker Hub.
+
+
+#our app currently connects to MySQL and Redis using Docker host ports.Kubernetes Pods cannot simply use "localhost" to reach those services. We'll configure connectivity separately rather than changing your existing database setup blindly.
+#we need to configure how the application inside Kubernetes will connect to MySQL and Redis. as inside a Kubernetes Pod, "localhost" refers to that Pod—not your Mac or your Docker MySQL/Redis containers.
+#since out default k8s namespace is task-mgmt-- Kubernetes commands will automatically target this namespace unless you explicitly specify another one.
+
+
+# we know which environment variables your Docker setup uses. lets first classify them
+
+#Variable	Kubernetes configuration
+ #MYSQL_DATABASE	ConfigMap
+ #MYSQL_USER	ConfigMap
+ #MYSQL_PASSWORD	Secret
+ #MYSQL_ROOT_PASSWORD	Secret
+ #JWT_SECRET	Secret
+ #JWT_EXPIRATION	ConfigMap
+
+ #A ConfigMap stores non-sensitive configuration, while a Secret stores sensitive values such as passwords and JWT signing keys.
+
+ #Docker Compose vs Spring Boot
+   #Your .env currently defines MySQL initialization variables. However, your Spring Boot application.properties expects:
+   #- DB_URL
+   #- DB_USERNAME
+   #- DB_PASSWORD
+   #- JWT_SECRET
+   #- JWT_EXPIRATION
+   #- REDIS_HOST
+   #- REDIS_PORT
+#so, We'll need to map the MySQL variables to the Spring Boot variables correctly.
 
 
 

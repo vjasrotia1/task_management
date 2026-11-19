@@ -3,6 +3,8 @@
 #2. for Integration testing: Start all three services using Docker Compose and verify they work together.
 #3. for Deployment preparation: we will Build and run the complete application(all services i.e. mysql,springboot appn,Redis etc) using Docker Compose.
 #4. for Kubernetes phase: we will Move towards a production-style container deployment.
+#docker-compose.yml has your existing Docker setup
+#- target — Maven build output.
 services:
 
   # MySQL Database Container
@@ -95,7 +97,37 @@ services:
 
 
 # Persistent Database Storage
+#A Docker volume stores MySQL data independently of the container's writable layer. This helps preserve your database when the container is recreated.
 volumes:
   mysql_data:
 
+    #initially it is recommend that we keep your existing MySQL and Redis Docker containers running and initially deploy only the Spring Boot application(currently running on Intellij) to Kubernetes.
+  #This is the safest approach because your MySQL container already has persistent storage configured.
+
+  #current setup:
+
+  #Spring Boot application
+  #Runs directly through IntelliJ · localhost:8080
+
+  #MySQL 8.4
+  #Docker container
+  #localhost:3307
+
+  #Redis 7
+  #Docker container
+  #localhost:6379
+
+  #now the question is : How we'll connect Kubernetes to these services because, When Spring Boot runs inside a Kubernetes Pod, localhost won't point to your Mac.
+  #For our initial learning setup, we'll use:
+  #Configuration	Value
+  #DB URL	jdbc:mysql://host.docker.internal:3307/task_mgmt_api_db
+  #DB username	Existing MYSQL_USER
+  #DB password	Existing MYSQL_PASSWORD
+  #Redis host	host.docker.internal
+  #Redis port	6379
+
+  #Later, we can migrate MySQL and Redis into Kubernetes using Deployments, Services and persistent storage.
+
+  #next step is to verify your existing containers using "docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+#It displays container names, running status and port mappings without exposing credentials.
 
