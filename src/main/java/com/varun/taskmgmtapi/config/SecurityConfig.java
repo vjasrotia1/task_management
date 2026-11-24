@@ -28,6 +28,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
 @Configuration
 //@config--> marks a Java class as a source of bean definitions(contains methods marked with @Bean where method name acts as bean ID and returned obj is managed by spring) for the Spring IoC container
@@ -104,6 +106,14 @@ public class SecurityConfig {
                                 SessionCreationPolicy.STATELESS
                         )
                 )
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(
+                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)
+                        )
+                )
+                //It establishes the correct HTTP response behavior for your JWT API.
+                //It does not change authorization rules: an authenticated USER who tries to access an ADMIN-only endpoint should still receive 403.
+
                 //FilterChainProxy evaluates the HTTP request's URL path using a RequestMatcher
                 /*
                 As soon as it finds a matching chain,
@@ -340,5 +350,59 @@ and the client receives:
 403 Forbidden
 
 This is a real and expected 403
+
+SecurityConfig — looks good
+Your configuration has three important security features.
+
+A. Method-level security
+@EnableMethodSecurity
+
+
+Enables @PreAuthorize.
+
+B. Stateless authentication
+.sessionManagement(session ->
+        session.sessionCreationPolicy(
+                SessionCreationPolicy.STATELESS
+        )
+)
+
+
+Appropriate for your JWT-based REST API.
+
+C. Authentication requirements
+.requestMatchers("/swagger-ui/**",
+        "/swagger-ui.html",
+        "/v3/api-docs/**").permitAll()
+
+.requestMatchers("/api/auth/**").permitAll()
+
+.anyRequest().authenticated()
+
+
+This means:
+- Swagger documentation is accessible without authentication.
+- Login and registration endpoints are accessible without authentication.
+- Other API endpoints require authentication.
+- The ADMIN-only role endpoint additionally requires ADMIN authorization.
+Your filter placement is also correct:
+.addFilterBefore(
+        jwtAuthFilter,
+        UsernamePasswordAuthenticationFilter.class
+);
+
+
+No mandatory changes here.
+
+4. One important security consideration
+Your current setup has:
+.csrf(csrf -> csrf.disable())
+
+
+This is acceptable for your current stateless API when authentication is exclusively through JWT bearer tokens supplied in the Authorization header.
+
+If you later store JWTs in cookies and send them automatically with browser requests, revisit CSRF protection.
+
+Also, remember that making Swagger publicly accessible does not make the API endpoints publicly accessible. Your security configuration still protects the API.
  */
 

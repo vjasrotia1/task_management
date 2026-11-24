@@ -37,17 +37,17 @@ HTTP is communication protocol
 //instead of different controllers handlign their error separately
 public class GlobalExceptionHandler {
 
-//spring catches the execption and finds the matching exception handler and this handler then creates the error response and client then receives HTTP 409 say
-@ExceptionHandler(ResourceAlreadyExistsException.class)
+    //spring catches the execption and finds the matching exception handler and this handler then creates the error response and client then receives HTTP 409 say
+    @ExceptionHandler(ResourceAlreadyExistsException.class)
 //@ExceptionHandler(ResourceAlreadyExistsException.class)-- tells spring that wherever "ResourceAlreadyExistsException" occurs, call this method
-@ResponseStatus(HttpStatus.CONFLICT)
+    @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponseDto handleResourceAlreadyExistsException(ResourceAlreadyExistsException exception) {
 
         return new ErrorResponseDto(
                 LocalDateTime.now(),
                 HttpStatus.CONFLICT.value(),
                 "conflict",
-                exception.getMessage(),null
+                exception.getMessage(), null
         );
     }
 
@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
     public Map<String, String> handleValidationErrors(
             MethodArgumentNotValidException ex) {
 
-    //why map?? because, fieldname--> corresponding validation error message
+        //why map?? because, fieldname--> corresponding validation error message
         //eg: errors.put("name", "Name is required");
         Map<String, String> errors = new HashMap<>();
 
@@ -112,51 +112,63 @@ FieldError
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponseDto handleResourceNotFoundException(ResourceNotFoundException exception) {
-    //;log.warn("Resource not found: {}", ex.getMessage())
-    return new ErrorResponseDto(
-            LocalDateTime.now(),
-            HttpStatus.NOT_FOUND.value(),
-            "resourceNotFound",
-            exception.getMessage(),null
-    );
-}
+        //;log.warn("Resource not found: {}", ex.getMessage())
+        return new ErrorResponseDto(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                "resourceNotFound",
+                exception.getMessage(), null
+        );
+    }
 
-@ExceptionHandler(InvalidCredentialsException.class)
-@ResponseStatus(HttpStatus.UNAUTHORIZED)
-public ErrorResponseDto handleInvalidCredentialsException(InvalidCredentialsException exception) {
+    @ExceptionHandler(InvalidCredentialsException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ErrorResponseDto handleInvalidCredentialsException(InvalidCredentialsException exception) {
 //log.warn("Authentication failed");
-    return new ErrorResponseDto(
-    LocalDateTime.now(),
-            HttpStatus.UNAUTHORIZED.value(), //--->401
-            "Unauthorised",
-            exception.getMessage(),null
-    );
+        return new ErrorResponseDto(
+                LocalDateTime.now(),
+                HttpStatus.UNAUTHORIZED.value(), //--->401
+                "Unauthorised",
+                exception.getMessage(), null
+        );
 
-}
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponseDto handleIllegalArgumentException(
             IllegalArgumentException ex) {
 
-       return new ErrorResponseDto(
-               LocalDateTime.now(),
-               HttpStatus.BAD_REQUEST.value(),
-               "Bad Request",
-               ex.getMessage(),null
-       );
+        return new ErrorResponseDto(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request",
+                ex.getMessage(), null
+        );
     }
 
     @ExceptionHandler(UserNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponseDto handleUserNotFoundException(UserNotFoundException exception) {
 
-    return new ErrorResponseDto(
-            LocalDateTime.now(),
-            HttpStatus.NOT_FOUND.value(),
-            "UserNotFound",
-            exception.getMessage(),null
-    );
+        return new ErrorResponseDto(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                "UserNotFound",
+                exception.getMessage(), null
+        );
+
+    }
+
+    @ExceptionHandler(LastAdminException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponseDto handleLastAdminException(LastAdminException exception) {
+
+        return new ErrorResponseDto(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "conflict",
+                exception.getMessage(), null);
 
     }
 }

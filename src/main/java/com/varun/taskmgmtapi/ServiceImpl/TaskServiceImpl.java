@@ -544,7 +544,16 @@ If any properties differ, the entity is marked "dirty," and Hibernate automatica
                                                              int pageNumber,
                                                              int pageSize,
                                                              String sortBy,
-                                                             String direction) {
+                                                             String direction,
+                                                             Long currentUserId,
+                                                             boolean isAdmin)
+    {
+
+        if (!isAdmin && !userId.equals(currentUserId)) {
+            throw new AccessDeniedException(
+                    "You are not allowed to view tasks belonging to another user"
+            );
+        }
 
         Sort sort=Sort.by(Sort.Direction.fromString(direction), sortBy);
 

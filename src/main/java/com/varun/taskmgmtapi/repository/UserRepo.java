@@ -1,5 +1,6 @@
 package com.varun.taskmgmtapi.repository;
 
+import com.varun.taskmgmtapi.models.Role;
 import com.varun.taskmgmtapi.models.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
@@ -21,6 +22,8 @@ public interface UserRepo extends JpaRepository<User, Long> {
     3.userRepository.findAll();
     4. userRepository.deleteById(1L);
      */
+
+    long countByRole(Role role);
 
 
 }

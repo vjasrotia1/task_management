@@ -220,8 +220,14 @@ public class TaskController {
     )
 
     {
+
+        User currentUser=(User)SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        Long currentUserId=currentUser.getId();
+        boolean isAdmin=currentUser.getRole()==Role.ADMIN;
+        
         return taskService.getAllTheTasksByUserIdPageWise(userId,
-                pageNumber,pageSize,sortBy,sortingDirection);
+                pageNumber,pageSize,sortBy,sortingDirection,currentUserId,isAdmin);
     }
 
     //Suppose you want an endpoint that returns tasks belonging to the currently logged-in user.
@@ -255,7 +261,9 @@ public class TaskController {
         assert user != null;
         Long userId = user.getId();
 
-        return taskService.getAllTheTasksByUserIdPageWise(userId,pageNumber,pageSize,sortBy,sortingDirection);
+        boolean isAdmin=user.getRole()==Role.ADMIN;
+
+        return taskService.getAllTheTasksByUserIdPageWise(userId,pageNumber,pageSize,sortBy,sortingDirection,userId,isAdmin);
         /*
         other way
         import org.springframework.security.core.annotation.AuthenticationPrincipal;
