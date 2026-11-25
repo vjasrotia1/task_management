@@ -8,8 +8,9 @@ import com.varun.taskmgmtapi.models.Role;
 import com.varun.taskmgmtapi.models.User;
 import com.varun.taskmgmtapi.repository.UserRepo;
 import com.varun.taskmgmtapi.service.UserService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
+import java.util.List;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -21,15 +22,59 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse updateUserRole(Long userId, UpdateUserRoleRequest updateUserRoleRequest, Long currentAdminId) {
-        User user=userRepo.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("User with id " + userId + " not found"));
+//        User user=userRepo.findById(userId)
+//                .orElseThrow(() -> new UserNotFoundException("User with id " + userId + " not found"));
+//
+//        // Check whether the requested role is the same
+//        if (user.getRole() == updateUserRoleRequest.getRole()) {
+//            return convertUserToUserResponse(user);
+//        }
+//
+//        // Check whether an ADMIN is being demoted
+//        if (user.getRole() == Role.ADMIN
+//                && updateUserRoleRequest.getRole() == Role.USER) {
+//
+//            long adminCount = userRepo.countByRole(Role.ADMIN);
+//
+//            if (adminCount <= 1) {
+//                throw new LastAdminException(
+//                        "Cannot demote the last ADMIN user"
+//                );
+//                //This may result in HTTP 500 unless your global exception handler maps it appropriately.
+//                //A better approach is to create a custom exception:LastAdminException
+//
+//            }
+//        }
+//
+//        user.setRole(updateUserRoleRequest.getRole());
+//
+//        return convertUserToUserResponse(user);
 
-        // Check whether the requested role is the same
+        // Step 1: Lock all existing user records in ascending ID order
+        List<User> lockedUsers = userRepo.findAllByOrderByIdAsc();
+
+        // Step 2: Find the requested user among the locked records
+        User user = null;
+
+        for (User existingUser : lockedUsers) {
+            if (existingUser.getId().equals(userId)) {
+                user = existingUser;
+                break;
+            }
+        }
+
+        if (user == null) {
+            throw new UserNotFoundException(
+                    "User with id " + userId + " not found"
+            );
+        }
+
+        // Step 3: Check whether the requested role is already assigned
         if (user.getRole() == updateUserRoleRequest.getRole()) {
             return convertUserToUserResponse(user);
         }
 
-        // Check whether an ADMIN is being demoted
+        // Step 4: Check whether an ADMIN is being demoted
         if (user.getRole() == Role.ADMIN
                 && updateUserRoleRequest.getRole() == Role.USER) {
 
@@ -39,15 +84,26 @@ public class UserServiceImpl implements UserService {
                 throw new LastAdminException(
                         "Cannot demote the last ADMIN user"
                 );
-                //This may result in HTTP 500 unless your global exception handler maps it appropriately.
-                //A better approach is to create a custom exception:LastAdminException
-
             }
         }
 
+        // Step 5: Update the role
         user.setRole(updateUserRoleRequest.getRole());
 
         return convertUserToUserResponse(user);
+        //Understand what changed
+        //Earlier implementation	New implementation
+        //findById()	Locks all user records first
+        //Counts ADMINs without serialization	Counts ADMINs after obtaining locks
+        //Concurrent requests could both pass	Concurrent role updates must wait for the locks
+        //
+        //Why does this work?
+        //
+        //The first transaction obtains the locks. A second role-update transaction cannot complete its locking query until the first transaction commits or rolls back.
+        //
+        //After waiting, the second transaction sees the updated role information and performs the ADMIN count check.
+        //
+        //One important assumption: this relies on MySQL's InnoDB transactional tables and the role-update code consistently using this locking method. We should verify the actual database behavior with an integration test rather than rely only on Mockito tests.
 
     }
 

@@ -8,6 +8,9 @@ import com.varun.taskmgmtapi.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 //this class handles HTTP requests and returns response data, usually JSON
 @RestController
 @RequestMapping("/api/auth")
@@ -24,6 +27,11 @@ public class AuthController {
     //if name,email,password are not as per RegisterRequest DTO, spring will create this exception(methodargnotvalidexception)
     // obj and throw MethodArgumentNotValidException, so add it to globalexception handler class
 
+    @Operation(summary = "Register a new user")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "User registered successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid registration data")
+    })
     @PostMapping("/register") //this annotation is bascially HTTP method
     @ResponseStatus(HttpStatus.CREATED) //201-client ko bina response body padhe smajh aa jana chahiye ki kya hua
     public UserResponse register(@Valid @RequestBody RegisterRequest registerRequest){
@@ -34,6 +42,12 @@ public class AuthController {
 
 
     //Add login endpoint
+    @Operation(summary = "Login and generate JWT token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Login successful"),
+            @ApiResponse(responseCode = "400", description = "Invalid request"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials")
+    })
     @PostMapping("/login")
     @ResponseStatus(HttpStatus.OK)
     public LoginResponse login(@Valid @RequestBody LoginRequest loginRequest){

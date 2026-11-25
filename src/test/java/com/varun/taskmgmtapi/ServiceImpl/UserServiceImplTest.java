@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,10 +34,11 @@ public class UserServiceImplTest {
 
         User user = mock(User.class);
 
-        //when(user.getId()).thenReturn(id);
+        when(user.getId()).thenReturn(id);
         //when(user.getName()).thenReturn("Test User");
         //when(user.getEmail()).thenReturn("test@example.com");
         when(user.getRole()).thenReturn(role);
+
 
         return user;
     }
@@ -52,8 +54,8 @@ public class UserServiceImplTest {
 
         User user = createMockUser(userId, Role.USER);
 
-        when(userRepo.findById(userId))
-                .thenReturn(Optional.of(user));
+        when(userRepo.findAllByOrderByIdAsc())
+                .thenReturn(List.of(user));
 
         UpdateUserRoleRequest request = new UpdateUserRoleRequest();
         request.setRole(Role.ADMIN);
@@ -84,8 +86,10 @@ public class UserServiceImplTest {
 
         User user = createMockUser(userId, Role.ADMIN);
 
-        when(userRepo.findById(userId))
-                .thenReturn(Optional.of(user));
+//        when(userRepo.findById(userId))
+//                .thenReturn(Optional.of(user));
+        when(userRepo.findAllByOrderByIdAsc())
+                .thenReturn(List.of(user));
 
         when(userRepo.countByRole(Role.ADMIN))
                 .thenReturn(2L);
@@ -118,8 +122,10 @@ public class UserServiceImplTest {
 
         User user = createMockUser(userId, Role.ADMIN);
 
-        when(userRepo.findById(userId))
-                .thenReturn(Optional.of(user));
+//        when(userRepo.findById(userId))
+//                .thenReturn(Optional.of(user));
+        when(userRepo.findAllByOrderByIdAsc())
+                .thenReturn(List.of(user));
 
         when(userRepo.countByRole(Role.ADMIN))
                 .thenReturn(2L);
@@ -152,8 +158,10 @@ public class UserServiceImplTest {
 
         User user = createMockUser(userId, Role.ADMIN);
 
-        when(userRepo.findById(userId))
-                .thenReturn(Optional.of(user));
+//        when(userRepo.findById(userId))
+//                .thenReturn(Optional.of(user));
+        when(userRepo.findAllByOrderByIdAsc())
+                .thenReturn(List.of(user));
 
         when(userRepo.countByRole(Role.ADMIN))
                 .thenReturn(1L);
@@ -184,8 +192,10 @@ public class UserServiceImplTest {
 
         User user = createMockUser(userId, Role.USER);
 
-        when(userRepo.findById(userId))
-                .thenReturn(Optional.of(user));
+//        when(userRepo.findById(userId))
+//                .thenReturn(Optional.of(user));
+        when(userRepo.findAllByOrderByIdAsc())
+                .thenReturn(List.of(user));
 
         UpdateUserRoleRequest request = new UpdateUserRoleRequest();
         request.setRole(Role.USER);
@@ -213,8 +223,10 @@ public class UserServiceImplTest {
         Long userId = 99L;
         Long currentAdminId = 1L;
 
-        when(userRepo.findById(userId))
-                .thenReturn(Optional.empty());
+//        when(userRepo.findById(userId))
+//                .thenReturn(Optional.empty());
+        when(userRepo.findAllByOrderByIdAsc())
+                .thenReturn(List.of());
 
         UpdateUserRoleRequest request = new UpdateUserRoleRequest();
         request.setRole(Role.ADMIN);

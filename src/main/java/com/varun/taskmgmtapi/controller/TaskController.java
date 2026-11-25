@@ -16,6 +16,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+
 
 import java.util.List;
 
@@ -39,7 +47,27 @@ public class TaskController {
     public TaskController(TaskService taskService) {
         this.taskService = taskService;
     }
+    @Operation(
+            summary = "Create a new task",
+            description = """
+                Creates a task for the authenticated user.
 
+                USER: The task is automatically assigned to the logged-in user.
+                ADMIN: Can assign the task to another user or themselves.
+                """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Task created successfully",
+                    content = @Content(
+                            schema = @Schema(implementation = TaskResponse.class)
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "Invalid request data"),
+            @ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @ApiResponse(responseCode = "404", description = "Assigned user not found")
+    })
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TaskResponse createTask(@Valid @RequestBody CreateTaskRequest createTaskRequest) {
@@ -77,7 +105,27 @@ public class TaskController {
             return taskService.createTask(createTaskRequest,userId,isAdmin);
     }
 
+    @Operation(
+            summary = "Get task by ID",
+            description = """
+                Retrieves a task using its ID.
 
+                USER: Can retrieve only their own assigned tasks.
+                ADMIN: Can retrieve any task.
+                """
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Task retrieved successfully",
+                    content = @Content(
+                            schema = @Schema(implementation = TaskResponse.class)
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @ApiResponse(responseCode = "403", description = "Access denied"),
+            @ApiResponse(responseCode = "404", description = "Task not found")
+    })
     @GetMapping("/{taskId}")
     public TaskResponse getTaskById(@Valid @PathVariable("taskId") Long taskId) {
         Authentication authObj=SecurityContextHolder.getContext().getAuthentication();
@@ -120,7 +168,28 @@ public class TaskController {
 //    public List<TaskResponse> getAllTasks() {
 //        return taskService.getAllTasks();
 //    }
+@Operation(
+        summary = "Update a task",
+        description = """
+                Updates the details of an existing task.
 
+                USER: Can update only their own assigned tasks.
+                ADMIN: Can update any task.
+                """
+)
+@ApiResponses(value = {
+        @ApiResponse(
+                responseCode = "200",
+                description = "Task updated successfully",
+                content = @Content(
+                        schema = @Schema(implementation = TaskResponse.class)
+                )
+        ),
+        @ApiResponse(responseCode = "400", description = "Invalid request data"),
+        @ApiResponse(responseCode = "401", description = "Unauthenticated"),
+        @ApiResponse(responseCode = "403", description = "Access denied"),
+        @ApiResponse(responseCode = "404", description = "Task not found")
+})
     @PatchMapping("/{taskId}")
     //The next step is to pass the authenticated user's ID and role from the controller
     //  and not from request parameters that the client can manipulate
@@ -156,8 +225,16 @@ public class TaskController {
         }
         return taskService.UpdateTask(taskId,updateTaskRequest,userId,isAdmin);
     }
+    @Operation(summary = "Delete a task (Admin only)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Task deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @ApiResponse(responseCode = "403", description = "Admin access required"),
+            @ApiResponse(responseCode = "404", description = "Task not found")
+    })
     @PreAuthorize("hasRole('ADMIN')") //because only admin can delete the task
     @DeleteMapping("/{taskId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTaskById(@Valid @PathVariable("taskId") Long taskId) {
         taskService.deleteTask(taskId);
         /*
@@ -169,13 +246,27 @@ public class TaskController {
        NO → 403 Forbidden
          */
     }
-
+    @Operation(summary = "Assign a task to a user (Admin only)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Task assigned successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @ApiResponse(responseCode = "403", description = "Admin access required"),
+            @ApiResponse(responseCode = "404", description = "Task or user not found")
+    })
     @PatchMapping("/{taskId}/assign/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public TaskResponse assignTask(@PathVariable("taskId") Long taskId, @PathVariable("userId") Long userId) {
         return taskService.assignTask(taskId, userId);
     }
 
+    @Operation(summary = "Update task status")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Task status updated"),
+            @ApiResponse(responseCode = "400", description = "Invalid status or transition"),
+            @ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @ApiResponse(responseCode = "403", description = "Access denied"),
+            @ApiResponse(responseCode = "404", description = "Task not found")
+    })
     @PatchMapping("/{taskId}/status")
     public TaskResponse changeTaskStatus(@PathVariable("taskId") Long taskId, @Valid @RequestBody UpdateTaskStatusRequest updateTaskStatusRequest) {
 
@@ -190,6 +281,12 @@ public class TaskController {
     }
 
     // ADMIN: View all tasks
+    @Operation(summary = "Get all tasks (Admin only)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Tasks retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @ApiResponse(responseCode = "403", description = "Admin access required")
+    })
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public Page<TaskResponse> getAllTheTasksPagewise(
@@ -210,6 +307,12 @@ public class TaskController {
 
     //In real World, instead of requiring the userId in the URL
     //you can expose: GET/api/tasks/my--> where the server determines the User from their JWT---> as shown below
+    @Operation(summary = "Get tasks by user ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Tasks retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @ApiResponse(responseCode = "403", description = "Access denied")
+    })
     @GetMapping("/user/{userId}")
     public Page<TaskResponse> getAllTheTasksforUserPagewise(
             @PathVariable("userId") Long userId,
@@ -235,6 +338,11 @@ public class TaskController {
     //We'll make the API identify the logged-in user automatically, so the client doesn't need to send their user ID.
 
     // USER: View their own tasks
+    @Operation(summary = "Get my tasks")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Tasks retrieved successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthenticated")
+    })
     @GetMapping("/my")
     public Page<TaskResponse> getMyTasks(
             @RequestParam(defaultValue = "0") int pageNumber,
@@ -332,4 +440,13 @@ TaskResponse DTO
 TaskController
    ↓
 JSON response
+
+Understanding the annotations
+Annotation	Purpose
+@Operation	Explains what the endpoint does
+summary	Short endpoint description
+description	Detailed behaviour
+@ApiResponses	Documents possible HTTP responses
+@ApiResponse	Documents one response code
+@Schema	Describes the response DTO structure
  */

@@ -8,6 +8,9 @@ import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 @RestController
 @RequestMapping("/api/users")
@@ -19,6 +22,14 @@ public class UserController {
         this.userService = userService;
     }
 
+    @Operation(summary = "Update user role (Admin only)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User role updated"),
+            @ApiResponse(responseCode = "400", description = "Invalid role"),
+            @ApiResponse(responseCode = "403", description = "Admin access required"),
+            @ApiResponse(responseCode = "404", description = "User not found"),
+            @ApiResponse(responseCode = "409", description = "Cannot demote the last admin")
+    })
     @PatchMapping("/role/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public UserResponse updateUserRole(@PathVariable("userId") Long userId, @Valid @RequestBody UpdateUserRoleRequest updateUserRoleRequest) {
@@ -34,6 +45,13 @@ public class UserController {
 
 }
 /*
+Your project now has:
+- JWT authorization in Swagger UI.
+- Documented Task, Auth and User endpoints.
+- Request/response schemas.
+- Important HTTP response codes.
+
+
 Recommended role-management rules
 Action	Allowed?
 USER changes their own role to ADMIN	No

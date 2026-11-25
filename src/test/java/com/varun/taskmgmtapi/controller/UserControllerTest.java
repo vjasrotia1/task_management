@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 import org.junit.jupiter.api.AfterEach;
-
+import com.varun.taskmgmtapi.exception.LastAdminException;
 
 
 @WebMvcTest(UserController.class)
@@ -185,5 +185,57 @@ public class UserControllerTest {
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
     }
+    @Test
+    void updateUserRole_whenDemotingLastAdmin_shouldReturn409() throws Exception {
+
+        // Arrange: Create an ADMIN user
+        User admin = new User();
+        admin.setId(10L);
+        admin.setName("Admin");
+        admin.setEmail("admin@test.com");
+        admin.setRole(Role.ADMIN);
+
+        // Set ADMIN as authenticated principal
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        admin,
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
+                );
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        // Mock service to throw LastAdminException
+        when(userService.updateUserRole(
+                org.mockito.ArgumentMatchers.eq(1L),
+                org.mockito.ArgumentMatchers.any(UpdateUserRoleRequest.class),
+                org.mockito.ArgumentMatchers.eq(10L)
+        )).thenThrow(new LastAdminException(
+                "Cannot demote the last ADMIN user"
+        ));
+
+        // Act & Assert
+        mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .patch("/api/users/role/1")
+                                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                                .content("""
+                            {
+                                "role": "USER"
+                            }
+                            """)
+                )
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isConflict()
+                );
+    }
 
 }
+//Our next integration test will:
+//1. Create or authenticate a real user.
+//2. Obtain a JWT through the login endpoint.
+//3. Send that JWT in an HTTP request.
+//4. Verify Spring Security identifies the correct user and role.
+//5. Verify the request reaches the actual service and database.
+//First, please share your AuthController.java (the controller containing your register and login endpoints).
