@@ -58,8 +58,8 @@ public class JwtService {
                     .claim("role",user.getRole().name())
                     .issuedAt(now)
                     .expiration(expiryDate)
-                    //signWith throws InvalidKeyException error
-                    .signWith(secretKey)
+                    //signWith throws InvalidKeyException error, Explicit HS256 signing is now configured.
+                    .signWith(secretKey,Jwts.SIG.HS256)
                     //compact() preduces final JWT string
                     .compact();
         }
@@ -76,20 +76,27 @@ public class JwtService {
             return extractAllClaims(token).getSubject();
         }
 
-        public boolean isTokenValid(String token){
-            try{
-                extractAllClaims(token);
-                return true;
-            }
-            catch(Exception e){
-                return false;
-            }
-        }
+//        public boolean isTokenValid(String token){
+//            try{
+//                extractAllClaims(token);
+//                return true;
+//            }
+//            catch(Exception e){
+//                return false;
+//            }
+//        }
+    //Why remove isTokenValid()?
+    //- extractAllClaims() already verifies the JWT signature.
+    //- It also rejects expired tokens.
+    //- Your JwtAuthFilter already calls extractAllClaims() directly.
+    //- Keeping an unused method adds unnecessary code.
     }
 
 
 
 /*
+verify that your JWT signing algorithm is explicitly restricted to HS256 rather than relying on automatic algorithm selection.
+.signWith(secretKey,Jwts.SIG.HS256)
 "hello" -- normal text/string
 computers represernt this as a byte array=[h-72,e-101,l-108,l-108,o-111]
 BASE64 encoder-- converts this byte array into a encoded string

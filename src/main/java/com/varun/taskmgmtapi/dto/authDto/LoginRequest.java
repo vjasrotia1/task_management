@@ -2,7 +2,6 @@ package com.varun.taskmgmtapi.dto.authDto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,6 +14,8 @@ public class LoginRequest {
     private String email;
 
     @NotBlank(message = "password is required")
-    @Size(min = 8, message = "enter correct password")
     private String password;
+    //One important point: Don't add @Size(min=8) to the login password.
+    //Why? If a user registered with an existing password and later the password policy changes,
+    // login should still allow them to authenticate. Registration enforces the password policy; login verifies the existing credentials.
 }

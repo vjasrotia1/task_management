@@ -12,3 +12,6 @@ public class UpdateUserRoleRequest {
 
     private Role role;
 }
+//Spring/Jackson tries to convert the JSON request into your UpdateUserRoleRequest object.
+//Because superadmin is not a valid enum value, JSON deserialization fails before the controller method execute
+//An invalid enum value generally produces HTTP 400 during JSON deserialization.

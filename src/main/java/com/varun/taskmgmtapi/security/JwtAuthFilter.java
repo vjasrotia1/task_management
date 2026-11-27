@@ -17,6 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import io.jsonwebtoken.JwtException;
 
 /*
 Why do we need a filter?
@@ -29,8 +30,9 @@ The filter handles authentication centrally.
 //extends OncePerRequestFilter means-- run this filter once for each HTTP request
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
-private JwtService jwtService;
-private UserRepo userRepo;
+    //final keyword to make dependencies immutable, since both dependencies are injected through the constructor and never reassigned
+private final JwtService jwtService;
+private final UserRepo userRepo;
 private static final Logger logger= LoggerFactory.getLogger(JwtAuthFilter.class);
 
 
@@ -116,10 +118,18 @@ public  JwtAuthFilter(JwtService jwtService, UserRepo userRepo) {
                     //or "Spring Security, for this request, remember that this user is authenticated.
                 }
             }
-
-        }catch(Exception e){
+        }
+        //Why these two exception types in catch block?
+        //Exception	Example
+        //JwtException	Expired token, invalid signature, malformed JWT
+        //IllegalArgumentException	Empty token or invalid user ID format
+        //NumberFormatException is already a subclass of IllegalArgumentException.
+        //why ?? If MySQL becomes unavailable while userRepo.findById() executes, that database exception will no longer be incorrectly swallowed and reported as a JWT failure. It can propagate as an actual application error.
+        catch(JwtException | IllegalArgumentException e){
+            logger.warn("JWT authentication failed: {}", e.getClass().getSimpleName());
+            SecurityContextHolder.clearContext();
             //because, It logs the exception message but not the stack trace
-            logger.warn("JWT authentication failed", e);
+            //logger.warn("JWT authentication failed", e);
             //Avoid logging the JWT itself.Logging alone doesn't reject an invalid token;Spring Security must still protect your endpoints.
             //invalid token
             //dont authenticate the request
@@ -128,6 +138,13 @@ public  JwtAuthFilter(JwtService jwtService, UserRepo userRepo) {
 Note that this catch block also catches database and programming errors, not just JWT errors.
 For a production application, you should distinguish expected invalid-token exceptions from unexpected application failures rather than labeling every exception as a JWT failure.
              */
+            //SecurityContextHolder.clearContext();
+            //means, Clear the SecurityContext on authentication failure
+            //Why?
+            //If JWT validation fails, we explicitly ensure that no authentication information remains in the current request's security context.
+            //The invalid JWT was rejected.
+            //The request was not authenticated.
+            //Spring Security prevented access to the protected endpoint
         }
         //It means:
         //"I'm done processing this filter. Continue the request." you can proceed to Next Spring Security filter

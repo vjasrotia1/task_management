@@ -338,7 +338,7 @@ public class AuthFlowIntegrationTest {
                                 "password": "abc"
                             }
                     """)
-        ).andExpect(status().isBadRequest());
+        ).andExpect(status().isUnauthorized());
     }
     @Test
     void authenticatedUser_shouldAccessMyTasksEndpoint() throws Exception {

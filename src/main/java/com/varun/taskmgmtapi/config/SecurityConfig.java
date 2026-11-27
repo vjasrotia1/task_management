@@ -30,6 +30,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 //@config--> marks a Java class as a source of bean definitions(contains methods marked with @Bean where method name acts as bean ID and returned obj is managed by spring) for the Spring IoC container
@@ -41,10 +43,40 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 //@EnableMethodSecurity is a configuration annotation. It enables (method-level security) feature throughout your application.
 //above annotation marks the class as source of bean definitions
 //@EnableWebSecurity: Activates Spring Security’s web security support and integrates it with your application
+
+//SecurityConfig has:
+//- CSRF disabled for your stateless JWT API.
+//- Stateless session management.
+//- Public registration and login endpoints.
+//- Public Swagger documentation and health endpoint.
+//- Authentication required for all other endpoints.
+//- JWT filter in the correct position.
+//- @EnableMethodSecurity for @PreAuthorize.
+
 public class SecurityConfig {
-    private JwtAuthFilter jwtAuthFilter;
+    private final JwtAuthFilter jwtAuthFilter;
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
+    }
+    @Bean
+    public FilterRegistrationBean<JwtAuthFilter> jwtFilterRegistration(
+            JwtAuthFilter jwtAuthFilter) {
+
+        FilterRegistrationBean<JwtAuthFilter> registration =
+                new FilterRegistrationBean<>(jwtAuthFilter);
+
+        registration.setEnabled(false);
+
+        return registration;
+        //keep @Component on JwtAuthFilter.
+        //Here's why:
+        //- @Component tells Spring to create and manage the JwtAuthFilter bean.
+        //- FilterRegistrationBean with setEnabled(false) prevents Spring Boot from registering it separately as a servlet-container filter.
+        //- .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class) adds it to the Spring Security filter chain.
+        //So, keep all three pieces:
+        //1. @Component on JwtAuthFilter.
+        //2. FilterRegistrationBean bean with setEnabled(false) in SecurityConfig.
+        //3. .addFilterBefore(...) in SecurityConfig.
     }
     @Bean
     public BCryptPasswordEncoder bCryptPasswordEncoder() {
@@ -71,6 +103,9 @@ public class SecurityConfig {
     // and then pass(dispatch) the HTTP request to the appropriate security filter chain(which has custom list of filters)
         //the HTTP request passes thru the sequence of these custom filters on security filters chain
 
+        //CORS configuration.
+        //This matters when your frontend runs on a different origin (for example,
+        // React on port 3000 and Spring Boot on port 8080).
 
         //Here, We'll secure task APIs after we build the JWT filter.
         http.csrf(csrf -> csrf.disable())
@@ -125,13 +160,20 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**").permitAll()
 
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/api/auth/register",
+                                        "/api/auth/login"
+                                ).permitAll()
+
+                        .requestMatchers("/actuator/health").permitAll()
 
                         .anyRequest().authenticated()
                 )
                 //generalised format: addFilterBefore(filter, class): Runs your filter before a standard filter.
                 .addFilterBefore(
                         jwtAuthFilter,
+                        //Spring Boot can sometimes register a filter bean with the servlet container as well as with Spring Security, potentially causing it to execute twice.
                         UsernamePasswordAuthenticationFilter.class
                 );
 

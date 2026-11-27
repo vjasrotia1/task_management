@@ -16,7 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private AuthService authService;
+    private final AuthService authService;
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
@@ -56,3 +56,4 @@ public class AuthController {
         //next step after this is "make login public" in your security config
     }
 }
+//check whether @Valid is applied to the registration request. Without it, annotations such as @NotBlank and @Size may not be enforced.

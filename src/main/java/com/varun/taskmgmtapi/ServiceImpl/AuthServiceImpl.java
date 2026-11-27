@@ -14,15 +14,18 @@ import com.varun.taskmgmtapi.service.AuthService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service //tells spring that : this is a service component and creat and manage an obj of this class
 //we will inject obj of this class in our controller
 public class AuthServiceImpl implements AuthService {
-
-    private UserRepo userRepo;
-    private BCryptPasswordEncoder bCryptPasswordEncoder;
+    private static final Logger logger =
+            LoggerFactory.getLogger(AuthServiceImpl.class);
+    private final UserRepo userRepo;
+    private final BCryptPasswordEncoder bCryptPasswordEncoder;
     //we have to implement login, so we need token for that and token will be provided by JwtService, so add dependency
-    private JwtService jwtService;
+    private final JwtService jwtService;
 
     //constructor injection
     //before this, we need to create a bean of datatype BCryptPasswordEncoder
@@ -48,7 +51,7 @@ public class AuthServiceImpl implements AuthService {
         user.setRole(Role.USER);
 
         userRepo.save(user);
-
+        logger.info("User registered successfully. User ID: {}", user.getId());
         return new UserResponse(
                 user.getId(),
                 user.getName(),
@@ -63,13 +66,14 @@ public class AuthServiceImpl implements AuthService {
 
         User user=userRepo.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() ->
-                        new InvalidCredentialsException("Invalid email"));
-//in the input, first give raw password and then encoded pwd stored     in db
+                        new InvalidCredentialsException("Invalid email or password"));
+//in the input, first give raw password and then encoded pwd stored in db
         if(!bCryptPasswordEncoder.matches(loginRequest.getPassword(),user.getPassword())){
-            throw new InvalidCredentialsException("Invalid password");
+            throw new InvalidCredentialsException("Invalid email or password");
         }
 //job of generating token is of JwtService
         String token=jwtService.generateToken(user);
+        logger.info("User logged in successfully. User ID: {}", user.getId());
         //call constructor of LoginResponse and pass token as attribute to create LoginResponse object
         return new LoginResponse(token);
         //u can check token on jwt.io

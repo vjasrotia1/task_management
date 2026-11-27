@@ -9,6 +9,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.dao.OptimisticLockingFailureException;
 /*
 HTTP is communication protocol
 └── communication rules
@@ -171,4 +173,41 @@ FieldError
                 exception.getMessage(), null);
 
     }
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponseDto handleHttpMessageNotReadableException(
+            HttpMessageNotReadableException exception) {
+
+        return new ErrorResponseDto(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request",
+                "Invalid request body or unsupported field value",
+                null
+        );
+    }
+    //It explicitly handles malformed JSON, invalid enum values and other JSON deserialization errors.
+    //It also avoids exposing internal Jackson exception details to API clients.
+    //Logging: Your exception handlers currently don't log errors. That's acceptable for now; avoid logging sensitive information.
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponseDto handleOptimisticLockingFailureException(
+            OptimisticLockingFailureException exception) {
+
+        return new ErrorResponseDto(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "Conflict",
+                "This task was modified by another request. Please refresh and try again.",
+                null
+        );
+    }
+    //Why this matters ??
+    //If two transactions attempt to update the same task using the same version:
+    //- First transaction succeeds.
+    //- Second transaction detects the version mismatch.
+    //- Hibernate raises an optimistic locking failure.
+    //- Your handler returns HTTP 409 Conflict with a user-friendly message.
+    //No stack traces or internal database details are exposed to the client.
 }

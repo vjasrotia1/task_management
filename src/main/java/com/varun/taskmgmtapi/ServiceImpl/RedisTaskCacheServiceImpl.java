@@ -8,7 +8,7 @@ import com.varun.taskmgmtapi.service.TaskCacheService;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-
+//This tells us that your current cache implementation is not preventing this read operation from succeeding. However, we should distinguish this from a fully verified Redis fallback mechanism.
 @Service //spring detects this class during component scanning and registers it as a bean
 //we will test the complete Redis caching flow using Redis CLI. We'll also verify that cache eviction happens only after a successful database transaction commit
 //redis Testing will be done by using Redis CLI-->

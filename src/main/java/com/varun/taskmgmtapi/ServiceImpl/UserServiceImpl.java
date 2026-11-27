@@ -11,9 +11,12 @@ import com.varun.taskmgmtapi.service.UserService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 import java.util.List;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 @Service
 public class UserServiceImpl implements UserService {
+    private static final Logger logger =
+            LoggerFactory.getLogger(UserServiceImpl.class);
     private UserRepo userRepo;
     public UserServiceImpl(UserRepo userRepo) {
         this.userRepo = userRepo;
@@ -89,7 +92,8 @@ public class UserServiceImpl implements UserService {
 
         // Step 5: Update the role
         user.setRole(updateUserRoleRequest.getRole());
-
+        logger.info("User role updated successfully. Target User ID: {}, New Role: {}, Updated by Admin ID: {}",
+                userId, updateUserRoleRequest.getRole(), currentAdminId);
         return convertUserToUserResponse(user);
         //Understand what changed
         //Earlier implementation	New implementation

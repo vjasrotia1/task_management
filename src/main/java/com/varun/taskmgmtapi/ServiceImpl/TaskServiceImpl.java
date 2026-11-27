@@ -21,6 +21,8 @@ import org.springframework.data.domain.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,6 +33,8 @@ import java.util.Set;
 @Service
 //@Service simply tell Spring to call the class's constructor
 public class TaskServiceImpl implements TaskService {
+    private static final Logger logger =
+            LoggerFactory.getLogger(TaskServiceImpl.class);
     private TaskRepo  taskRepo;
     private UserRepo userRepo;
     private final TaskCacheService taskCacheService;
@@ -82,6 +86,7 @@ public class TaskServiceImpl implements TaskService {
             }
         }
         taskRepo.save(task);
+        logger.info("Task created successfully. Task ID: {}", task.getId());
         return convertToResponse(task);
     }
 
@@ -120,12 +125,27 @@ public class TaskServiceImpl implements TaskService {
                         "Task with id " + taskId + " not found");
             }
         }
-        System.out.println("TaskCacheService bean class: "
-                + taskCacheService.getClass().getName());
+//        System.out.println("TaskCacheService bean class: "
+//                + taskCacheService.getClass().getName());
+//
+//        System.out.println("Calling RedisTaskCacheServiceImpl...");
+        logger.debug("TaskCacheService bean class: {}",
+                taskCacheService.getClass().getName());
 
-        System.out.println("Calling RedisTaskCacheServiceImpl...");
+        logger.debug("Fetching task response from cache service. Task ID: {}", taskId);
         return taskCacheService.getTaskResponse(taskId);
+
         /*
+Authorization versus caching
+Your current getTasksById() checks ownership in MySQL before calling Redis.
+
+That means:
+1. USER requests a task.
+2. MySQL verifies ownership.
+3. Redis returns the cached response, if available.
+Although this adds a database query, it is intentional security protection. We should not remove this ownership check just to improve cache performance.
+
+Otherwise, a user could potentially access another user's cached task.
         Why are we checking existsById() separately?
 Consider these scenarios:
 Scenario	Expected result
@@ -232,6 +252,7 @@ after this, let's implement the next important part: Cache invalidation.
         task.setStatus(updateTaskRequest.getStatus());
 
         taskRepo.save(task);
+        logger.info("Task updated successfully. Task ID: {}", taskId);
 
         // Remove old cached response
         //taskCacheService.evictTaskCache(taskId);
@@ -278,7 +299,7 @@ after this, let's implement the next important part: Cache invalidation.
                         new ResourceNotFoundException("Task with id: " + id + " not found!"));
 
         taskRepo.delete(task);
-
+        logger.info("Task deleted successfully. Task ID: {}", id);
         // Remove corresponding entry from Redis
         //taskCacheService.evictTaskCache(id);
         eventPublisher.publishEvent(new TaskCacheEvictionEvent(id));
@@ -419,7 +440,8 @@ If any properties differ, the entity is marked "dirty," and Hibernate automatica
         task.setUpdatedAt(LocalDateTime.now());
         //save in mySql
         taskRepo.save(task);
-
+        logger.info("Task status updated successfully. Task ID: {}, New status: {}",
+                taskId, requestedStatus);
         //Evict old Redis cache
         //taskCacheService.evictTaskCache(taskId);
         eventPublisher.publishEvent(new TaskCacheEvictionEvent(taskId));
@@ -554,6 +576,29 @@ If any properties differ, the entity is marked "dirty," and Hibernate automatica
                     "You are not allowed to view tasks belonging to another user"
             );
         }
+        if (pageNumber < 0) {
+            throw new IllegalArgumentException("Page number can't be negative");
+        }
+
+        if (pageSize <= 0 || pageSize > 100) {
+            throw new IllegalArgumentException("Page Size must be between 1 and 100");
+        }
+
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            throw new IllegalArgumentException("Invalid Sort field: " + sortBy);
+        }
+
+        if (!direction.equals("asc") && !direction.equals("desc")) {
+            throw new IllegalArgumentException("Direction must either be asc or desc");
+        }
+        //Why are we doing this?
+        //Validation	Prevents
+        //pageNumber < 0	Invalid page numbers
+        //pageSize <= 0	Empty or invalid page sizes
+        //pageSize > 100	Excessively large database requests
+        //Allowed sort fields	Invalid sorting columns
+        //asc / desc	Invalid sorting directions
+        //We are reusing your existing ALLOWED_SORT_FIELDS set, so there is no need to create another one.
 
         Sort sort=Sort.by(Sort.Direction.fromString(direction), sortBy);
 
@@ -572,3 +617,5 @@ If any properties differ, the entity is marked "dirty," and Hibernate automatica
 
     }
 }
+//@Transactional method.
+//Hibernate supports dirty checking, which automatically detects changes to managed entities and persists them when the transaction commits.
